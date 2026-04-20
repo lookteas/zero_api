@@ -1,0 +1,520 @@
+syntax = "v1"
+
+info (
+	title:  "Zero App API"
+	desc:   "意识提升 Web 应用 RESTful API 草案"
+	author: "Zero App"
+	email:  "noreply@example.com"
+)
+
+type (
+	Pagination {
+		page     int64 `json:"page"`
+		pageSize int64 `json:"pageSize"`
+		total    int64 `json:"total"`
+	}
+	UserInfo {
+		id       uint64 `json:"id"`
+		account  string `json:"account"`
+		email    string `json:"email,optional"`
+		mobile   string `json:"mobile,optional"`
+		nickname string `json:"nickname"`
+		avatar   string `json:"avatar"`
+		status   int64  `json:"status"`
+	}
+	TopicInfo {
+		id          uint64 `json:"id"`
+		title       string `json:"title"`
+		summary     string `json:"summary"`
+		description string `json:"description,optional"`
+		orderNo     int64  `json:"orderNo"`
+		status      int64  `json:"status"`
+	}
+	DailyTaskInfo {
+		id               uint64 `json:"id"`
+		taskDate         string `json:"taskDate"`
+		topicId          uint64 `json:"topicId"`
+		topicOrderNo     int64  `json:"topicOrderNo"`
+		topicTitle       string `json:"topicTitle"`
+		topicSummary     string `json:"topicSummary"`
+		topicDescription string `json:"topicDescription,optional"`
+		weakness         string `json:"weakness,optional"`
+		improvementPlan  string `json:"improvementPlan,optional"`
+		verificationPath string `json:"verificationPath,optional"`
+		reflectionNote   string `json:"reflectionNote,optional"`
+		status           string `json:"status"`
+		canEditContent   bool   `json:"canEditContent"`
+		canAppendReflection bool `json:"canAppendReflection"`
+		submittedAt      string `json:"submittedAt,optional"`
+		createdAt        string `json:"createdAt"`
+		updatedAt        string `json:"updatedAt"`
+	}
+	DailyLogInfo {
+		id          uint64 `json:"id"`
+		dailyTaskId uint64 `json:"dailyTaskId"`
+		logTime     string `json:"logTime"`
+		actionText  string `json:"actionText,optional"`
+		status      string `json:"status"`
+		remark      string `json:"remark,optional"`
+		createdAt   string `json:"createdAt"`
+		updatedAt   string `json:"updatedAt"`
+	}
+	ReviewRecordInfo {
+		id              uint64 `json:"id"`
+		reviewItemId    uint64 `json:"reviewItemId"`
+		result          string `json:"result"`
+		actualSituation string `json:"actualSituation,optional"`
+		suggestion      string `json:"suggestion,optional"`
+		submittedAt     string `json:"submittedAt"`
+	}
+	ReviewItemInfo {
+		id           uint64           `json:"id"`
+		dailyTaskId  uint64           `json:"dailyTaskId"`
+		reviewStage  string           `json:"reviewStage"`
+		dueAt        string           `json:"dueAt"`
+		status       string           `json:"status"`
+		completedAt  string           `json:"completedAt,optional"`
+		dailyTask    DailyTaskInfo    `json:"dailyTask"`
+		latestRecord ReviewRecordInfo `json:"latestRecord,optional"`
+	}
+	VoteCandidateInfo {
+		id           uint64 `json:"id"`
+		topicId      uint64 `json:"topicId"`
+		topicTitle   string `json:"topicTitle"`
+		topicSummary string `json:"topicSummary"`
+		voteCount    int64  `json:"voteCount"`
+		sortNo       int64  `json:"sortNo"`
+	}
+	WeeklyVoteInfo {
+		id              uint64              `json:"id"`
+		weekStartDate   string              `json:"weekStartDate"`
+		voteStartAt     string              `json:"voteStartAt"`
+		voteEndAt       string              `json:"voteEndAt"`
+		status          string              `json:"status"`
+		resultTopicId   uint64              `json:"resultTopicId,optional"`
+		hasVoted        bool                `json:"hasVoted"`
+		userCandidateId uint64              `json:"userCandidateId,optional"`
+		candidates      []VoteCandidateInfo `json:"candidates"`
+	}
+	DiscussionInfo {
+		id              uint64 `json:"id"`
+		weekStartDate   string `json:"weekStartDate"`
+		topicId         uint64 `json:"topicId"`
+		topicTitle      string `json:"topicTitle"`
+		discussionTitle string `json:"discussionTitle"`
+		description     string `json:"description,optional"`
+		goals           string `json:"goals,optional"`
+		meetingTime     string `json:"meetingTime"`
+		meetingLink     string `json:"meetingLink"`
+		shareText       string `json:"shareText,optional"`
+		status          string `json:"status"`
+	}
+	HomeOverview {
+		continuousDays     int64 `json:"continuousDays"`
+		totalTaskCount     int64 `json:"totalTaskCount"`
+		totalReviewCount   int64 `json:"totalReviewCount"`
+		pendingReviewCount int64 `json:"pendingReviewCount"`
+	}
+	HomeData {
+		todayTask         DailyTaskInfo    `json:"todayTask,optional"`
+		overview          HomeOverview     `json:"overview"`
+		pendingReviews    []ReviewItemInfo `json:"pendingReviews"`
+		currentVote       WeeklyVoteInfo   `json:"currentVote,optional"`
+		currentDiscussion DiscussionInfo   `json:"currentDiscussion,optional"`
+	}
+	SimpleResp {
+		code      int64  `json:"code"`
+		message   string `json:"message"`
+		requestId string `json:"requestId,optional"`
+	}
+	LoginData {
+		accessToken  string   `json:"accessToken"`
+		refreshToken string   `json:"refreshToken"`
+		accessExpire int64    `json:"accessExpire"`
+		user         UserInfo `json:"user"`
+	}
+	LoginResp {
+		code      int64     `json:"code"`
+		message   string    `json:"message"`
+		requestId string    `json:"requestId,optional"`
+		data      LoginData `json:"data"`
+	}
+	UserResp {
+		code      int64    `json:"code"`
+		message   string   `json:"message"`
+		requestId string   `json:"requestId,optional"`
+		data      UserInfo `json:"data"`
+	}
+	HomeResp {
+		code      int64    `json:"code"`
+		message   string   `json:"message"`
+		requestId string   `json:"requestId,optional"`
+		data      HomeData `json:"data"`
+	}
+	TopicListData {
+		list       []TopicInfo `json:"list"`
+		pagination Pagination  `json:"pagination"`
+	}
+	TopicListResp {
+		code      int64         `json:"code"`
+		message   string        `json:"message"`
+		requestId string        `json:"requestId,optional"`
+		data      TopicListData `json:"data"`
+	}
+	DailyTaskResp {
+		code      int64         `json:"code"`
+		message   string        `json:"message"`
+		requestId string        `json:"requestId,optional"`
+		data      DailyTaskInfo `json:"data"`
+	}
+	DailyTaskListData {
+		list       []DailyTaskInfo `json:"list"`
+		pagination Pagination      `json:"pagination"`
+	}
+	DailyTaskListResp {
+		code      int64             `json:"code"`
+		message   string            `json:"message"`
+		requestId string            `json:"requestId,optional"`
+		data      DailyTaskListData `json:"data"`
+	}
+	DailyLogResp {
+		code      int64        `json:"code"`
+		message   string       `json:"message"`
+		requestId string       `json:"requestId,optional"`
+		data      DailyLogInfo `json:"data"`
+	}
+	DailyLogListData {
+		list       []DailyLogInfo `json:"list"`
+		pagination Pagination     `json:"pagination"`
+	}
+	DailyLogListResp {
+		code      int64            `json:"code"`
+		message   string           `json:"message"`
+		requestId string           `json:"requestId,optional"`
+		data      DailyLogListData `json:"data"`
+	}
+	ReviewItemResp {
+		code      int64          `json:"code"`
+		message   string         `json:"message"`
+		requestId string         `json:"requestId,optional"`
+		data      ReviewItemInfo `json:"data"`
+	}
+	ReviewItemListData {
+		list       []ReviewItemInfo `json:"list"`
+		pagination Pagination       `json:"pagination"`
+	}
+	ReviewItemListResp {
+		code      int64              `json:"code"`
+		message   string             `json:"message"`
+		requestId string             `json:"requestId,optional"`
+		data      ReviewItemListData `json:"data"`
+	}
+	ReviewRecordListData {
+		list       []ReviewRecordInfo `json:"list"`
+		pagination Pagination         `json:"pagination"`
+	}
+	ReviewRecordListResp {
+		code      int64                `json:"code"`
+		message   string               `json:"message"`
+		requestId string               `json:"requestId,optional"`
+		data      ReviewRecordListData `json:"data"`
+	}
+	ReviewHistoryRecordInfo {
+		id              uint64 `json:"id"`
+		reviewItemId    uint64 `json:"reviewItemId"`
+		dailyTaskId     uint64 `json:"dailyTaskId"`
+		reviewStage     string `json:"reviewStage"`
+		taskDate        string `json:"taskDate"`
+		topicTitle      string `json:"topicTitle"`
+		topicSummary    string `json:"topicSummary,optional"`
+		summary         string `json:"summary"`
+		result          string `json:"result"`
+		actualSituation string `json:"actualSituation,optional"`
+		suggestion      string `json:"suggestion,optional"`
+		submittedAt     string `json:"submittedAt"`
+	}
+	ReviewHistoryListData {
+		list       []ReviewHistoryRecordInfo `json:"list"`
+		pagination Pagination                `json:"pagination"`
+	}
+	ReviewHistoryListResp {
+		code      int64                 `json:"code"`
+		message   string                `json:"message"`
+		requestId string                `json:"requestId,optional"`
+		data      ReviewHistoryListData `json:"data"`
+	}
+	WeeklyVoteResp {
+		code      int64          `json:"code"`
+		message   string         `json:"message"`
+		requestId string         `json:"requestId,optional"`
+		data      WeeklyVoteInfo `json:"data"`
+	}
+	DiscussionResp {
+		code      int64          `json:"code"`
+		message   string         `json:"message"`
+		requestId string         `json:"requestId,optional"`
+		data      DiscussionInfo `json:"data"`
+	}
+	RegisterReq {
+		account    string `json:"account"`
+		password   string `json:"password"`
+		nickname   string `json:"nickname,optional"`
+		email      string `json:"email,optional"`
+		mobile     string `json:"mobile,optional"`
+		verifyCode string `json:"verifyCode,optional"`
+	}
+	PasswordLoginReq {
+		account  string `json:"account"`
+		password string `json:"password"`
+	}
+	CodeLoginReq {
+		targetType  string `json:"targetType"`
+		targetValue string `json:"targetValue"`
+		verifyCode  string `json:"verifyCode"`
+	}
+	SendVerifyCodeReq {
+		targetType  string `json:"targetType"`
+		targetValue string `json:"targetValue"`
+		bizType     string `json:"bizType"`
+	}
+	RefreshTokenReq {
+		refreshToken string `json:"refreshToken"`
+	}
+	DailyTaskCreateReq {
+		taskDate string `json:"taskDate,optional"`
+	}
+	DailyTaskUpdateReq {
+		weakness         string `json:"weakness,optional"`
+		improvementPlan  string `json:"improvementPlan,optional"`
+		verificationPath string `json:"verificationPath,optional"`
+		reflectionNote   string `json:"reflectionNote,optional"`
+	}
+	DailyTaskQueryReq {
+		page      int64  `form:"page,optional"`
+		pageSize  int64  `form:"pageSize,optional"`
+		status    string `form:"status,optional"`
+		startDate string `form:"startDate,optional"`
+		endDate   string `form:"endDate,optional"`
+		keyword   string `form:"keyword,optional"`
+	}
+	DailyLogCreateReq {
+		logTime    string `json:"logTime"`
+		actionText string `json:"actionText"`
+		status     string `json:"status"`
+		remark     string `json:"remark,optional"`
+	}
+	DailyLogUpdateReq {
+		logTime    string `json:"logTime,optional"`
+		actionText string `json:"actionText,optional"`
+		status     string `json:"status,optional"`
+		remark     string `json:"remark,optional"`
+	}
+	DailyLogQueryReq {
+		page     int64 `form:"page,optional"`
+		pageSize int64 `form:"pageSize,optional"`
+	}
+	ReviewItemQueryReq {
+		page     int64  `form:"page,optional"`
+		pageSize int64  `form:"pageSize,optional"`
+		status   string `form:"status,optional"`
+		stage    string `form:"stage,optional"`
+	}
+	ReviewRecordCreateReq {
+		result          string `json:"result"`
+		actualSituation string `json:"actualSituation,optional"`
+		suggestion      string `json:"suggestion,optional"`
+	}
+	ReviewRecoveryCreateReq {
+		reviewItemIds   []uint64 `json:"reviewItemIds"`
+		result          string   `json:"result"`
+		actualSituation string   `json:"actualSituation,optional"`
+		suggestion      string   `json:"suggestion,optional"`
+	}
+	ReviewHistoryQueryReq {
+		startDate string `form:"startDate,optional"`
+		endDate   string `form:"endDate,optional"`
+		keyword   string `form:"keyword,optional"`
+	}
+	VoteRecordCreateReq {
+		candidateId uint64 `json:"candidateId"`
+	}
+	TopicQueryReq {
+		page     int64  `form:"page,optional"`
+		pageSize int64  `form:"pageSize,optional"`
+		status   int64  `form:"status,optional"`
+		keyword  string `form:"keyword,optional"`
+	}
+	TopicCreateReq {
+		title       string `json:"title"`
+		summary     string `json:"summary"`
+		description string `json:"description,optional"`
+		orderNo     int64  `json:"orderNo"`
+		status      int64  `json:"status"`
+	}
+	TopicUpdateReq {
+		title       string `json:"title,optional"`
+		summary     string `json:"summary,optional"`
+		description string `json:"description,optional"`
+		orderNo     int64  `json:"orderNo,optional"`
+		status      int64  `json:"status,optional"`
+	}
+	WeeklyVoteCreateReq {
+		weekStartDate     string   `json:"weekStartDate"`
+		voteStartAt       string   `json:"voteStartAt"`
+		voteEndAt         string   `json:"voteEndAt"`
+		candidateTopicIds []uint64 `json:"candidateTopicIds"`
+		status            string   `json:"status"`
+	}
+	WeeklyVoteUpdateReq {
+		voteStartAt   string `json:"voteStartAt,optional"`
+		voteEndAt     string `json:"voteEndAt,optional"`
+		resultTopicId uint64 `json:"resultTopicId,optional"`
+		status        string `json:"status,optional"`
+	}
+	DiscussionCreateReq {
+		weekStartDate   string `json:"weekStartDate"`
+		topicId         uint64 `json:"topicId"`
+		topicTitle      string `json:"topicTitle"`
+		discussionTitle string `json:"discussionTitle"`
+		description     string `json:"description,optional"`
+		goals           string `json:"goals,optional"`
+		meetingTime     string `json:"meetingTime"`
+		meetingLink     string `json:"meetingLink"`
+		shareText       string `json:"shareText,optional"`
+		status          string `json:"status"`
+		adminRemark     string `json:"adminRemark,optional"`
+	}
+	DiscussionUpdateReq {
+		discussionTitle string `json:"discussionTitle,optional"`
+		description     string `json:"description,optional"`
+		goals           string `json:"goals,optional"`
+		meetingTime     string `json:"meetingTime,optional"`
+		meetingLink     string `json:"meetingLink,optional"`
+		shareText       string `json:"shareText,optional"`
+		status          string `json:"status,optional"`
+		adminRemark     string `json:"adminRemark,optional"`
+	}
+	AdminLoginReq {
+		username string `json:"username"`
+		password string `json:"password"`
+	}
+)
+
+service zero-api {
+	@handler SendVerifyCode
+	post /auth/verify-codes (SendVerifyCodeReq) returns (SimpleResp)
+
+	@handler Register
+	post /auth/register (RegisterReq) returns (LoginResp)
+
+	@handler PasswordLogin
+	post /auth/login (PasswordLoginReq) returns (LoginResp)
+
+	@handler CodeLogin
+	post /auth/code-login (CodeLoginReq) returns (LoginResp)
+
+	@handler RefreshToken
+	post /auth/refresh-token (RefreshTokenReq) returns (LoginResp)
+
+	@handler Logout
+	post /auth/logout returns (SimpleResp)
+
+	@handler GetMe
+	get /me returns (UserResp)
+
+	@handler GetHome
+	get /me/home returns (HomeResp)
+
+	@handler ListTopics
+	get /topics (TopicQueryReq) returns (TopicListResp)
+
+	@handler GetMyTodayTask
+	get /me/today-task returns (DailyTaskResp)
+
+	@handler CreateDailyTask
+	post /daily-tasks (DailyTaskCreateReq) returns (DailyTaskResp)
+
+	@handler ListDailyTasks
+	get /daily-tasks (DailyTaskQueryReq) returns (DailyTaskListResp)
+
+	@handler GetDailyTask
+	get /daily-tasks/:id returns (DailyTaskResp)
+
+	@handler UpdateDailyTask
+	patch /daily-tasks/:id (DailyTaskUpdateReq) returns (DailyTaskResp)
+
+	@handler SubmitDailyTask
+	post /daily-tasks/:id/submit returns (DailyTaskResp)
+
+	@handler ListDailyTaskLogs
+	get /daily-tasks/:id/logs (DailyLogQueryReq) returns (DailyLogListResp)
+
+	@handler CreateDailyTaskLog
+	post /daily-tasks/:id/logs (DailyLogCreateReq) returns (DailyLogResp)
+
+	@handler GetDailyLog
+	get /daily-logs/:id returns (DailyLogResp)
+
+	@handler UpdateDailyLog
+	patch /daily-logs/:id (DailyLogUpdateReq) returns (DailyLogResp)
+
+	@handler ListReviewItems
+	get /review-items (ReviewItemQueryReq) returns (ReviewItemListResp)
+
+	@handler GetReviewItem
+	get /review-items/:id returns (ReviewItemResp)
+
+	@handler CreateReviewRecord
+	post /review-items/:id/records (ReviewRecordCreateReq) returns (SimpleResp)
+
+	@handler CreateRecoveryReview
+	post /review-recovery-records (ReviewRecoveryCreateReq) returns (SimpleResp)
+
+	@handler ListReviewRecords
+	get /review-items/:id/records (DailyLogQueryReq) returns (ReviewRecordListResp)
+
+	@handler ListReviewHistoryRecords
+	get /review-records (ReviewHistoryQueryReq) returns (ReviewHistoryListResp)
+
+	@handler GetCurrentWeeklyVote
+	get /weekly-votes/current returns (WeeklyVoteResp)
+
+	@handler CreateCurrentWeeklyVoteRecord
+	post /weekly-votes/current/records (VoteRecordCreateReq) returns (SimpleResp)
+
+	@handler GetCurrentDiscussion
+	get /discussions/current returns (DiscussionResp)
+
+	@handler AdminLogin
+	post /admin/auth/login (AdminLoginReq) returns (LoginResp)
+
+	@handler AdminListTopics
+	get /admin/topics (TopicQueryReq) returns (TopicListResp)
+
+	@handler AdminCreateTopic
+	post /admin/topics (TopicCreateReq) returns (SimpleResp)
+
+	@handler AdminUpdateTopic
+	patch /admin/topics/:id (TopicUpdateReq) returns (SimpleResp)
+
+	@handler AdminListWeeklyVotes
+	get /admin/weekly-votes returns (SimpleResp)
+
+	@handler AdminCreateWeeklyVote
+	post /admin/weekly-votes (WeeklyVoteCreateReq) returns (SimpleResp)
+
+	@handler AdminUpdateWeeklyVote
+	patch /admin/weekly-votes/:id (WeeklyVoteUpdateReq) returns (SimpleResp)
+
+	@handler AdminListDiscussions
+	get /admin/discussions returns (SimpleResp)
+
+	@handler AdminCreateDiscussion
+	post /admin/discussions (DiscussionCreateReq) returns (SimpleResp)
+
+	@handler AdminUpdateDiscussion
+	patch /admin/discussions/:id (DiscussionUpdateReq) returns (SimpleResp)
+
+	@handler AdminStatsOverview
+	get /admin/stats/overview returns (SimpleResp)
+}
