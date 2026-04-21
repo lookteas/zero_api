@@ -4,6 +4,13 @@
 
 # Env files
 .env*
+!.env.example
+
+# Local config files
+/etc/*.yaml
+/etc/*.yml
+!/etc/*.example.yaml
+!/etc/*.example.yml
 
 # Runtime logs
 *.log
