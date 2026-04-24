@@ -145,6 +145,48 @@ type (
 		requestId string   `json:"requestId,optional"`
 		data      UserInfo `json:"data"`
 	}
+	AdminUserInfo {
+		id          uint64 `json:"id"`
+		account     string `json:"account"`
+		email       string `json:"email,optional"`
+		mobile      string `json:"mobile,optional"`
+		nickname    string `json:"nickname"`
+		avatar      string `json:"avatar"`
+		status      int64  `json:"status"`
+		createdAt   string `json:"createdAt"`
+		lastLoginAt string `json:"lastLoginAt,optional"`
+	}
+	AdminUserSummary {
+		total      int64 `json:"total"`
+		active     int64 `json:"active"`
+		withEmail  int64 `json:"withEmail"`
+		withMobile int64 `json:"withMobile"`
+	}
+	AdminUserListData {
+		list       []AdminUserInfo  `json:"list"`
+		pagination Pagination       `json:"pagination"`
+		summary    AdminUserSummary `json:"summary"`
+	}
+	AdminUserListResp {
+		code      int64             `json:"code"`
+		message   string            `json:"message"`
+		requestId string            `json:"requestId,optional"`
+		data      AdminUserListData `json:"data"`
+	}
+	AdminUserQueryReq {
+		page     int64  `form:"page,optional"`
+		pageSize int64  `form:"pageSize,optional"`
+		status   string `form:"status,optional"`
+		keyword  string `form:"keyword,optional"`
+	}
+	AdminUpdateUserReq {
+		id       uint64 `path:"id"`
+		nickname string `json:"nickname"`
+		email    string `json:"email,optional"`
+		mobile   string `json:"mobile,optional"`
+		avatar   string `json:"avatar,optional"`
+		status   int64  `json:"status"`
+	}
 	HomeResp {
 		code      int64    `json:"code"`
 		message   string   `json:"message"`
@@ -496,6 +538,12 @@ service zero-api {
 
 	@handler AdminUpdateTopic
 	patch /admin/topics/:id (TopicUpdateReq) returns (SimpleResp)
+
+	@handler AdminListUsers
+	get /admin/users (AdminUserQueryReq) returns (AdminUserListResp)
+
+	@handler AdminUpdateUser
+	patch /admin/users/:id (AdminUpdateUserReq) returns (SimpleResp)
 
 	@handler AdminListWeeklyVotes
 	get /admin/weekly-votes returns (SimpleResp)

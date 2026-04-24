@@ -445,6 +445,54 @@ type UserResp struct {
 	Data      UserInfo `json:"data"`
 }
 
+type AdminUserInfo struct {
+	Id          uint64 `json:"id"`
+	Account     string `json:"account"`
+	Email       string `json:"email,optional"`
+	Mobile      string `json:"mobile,optional"`
+	Nickname    string `json:"nickname"`
+	Avatar      string `json:"avatar"`
+	Status      int64  `json:"status"`
+	CreatedAt   string `json:"createdAt"`
+	LastLoginAt string `json:"lastLoginAt,optional"`
+}
+
+type AdminUserSummary struct {
+	Total      int64 `json:"total"`
+	Active     int64 `json:"active"`
+	WithEmail  int64 `json:"withEmail"`
+	WithMobile int64 `json:"withMobile"`
+}
+
+type AdminUserListData struct {
+	List       []AdminUserInfo   `json:"list"`
+	Pagination Pagination        `json:"pagination"`
+	Summary    AdminUserSummary  `json:"summary"`
+}
+
+type AdminUserListResp struct {
+	Code      int64             `json:"code"`
+	Message   string            `json:"message"`
+	RequestId string            `json:"requestId,optional"`
+	Data      AdminUserListData `json:"data"`
+}
+
+type AdminUserQueryReq struct {
+	Page     int64  `form:"page,optional"`
+	PageSize int64  `form:"pageSize,optional"`
+	Status   string `form:"status,optional"`
+	Keyword  string `form:"keyword,optional"`
+}
+
+type AdminUpdateUserReq struct {
+	Id       uint64 `path:"id"`
+	Nickname string `json:"nickname"`
+	Email    string `json:"email,optional"`
+	Mobile   string `json:"mobile,optional"`
+	Avatar   string `json:"avatar,optional"`
+	Status   int64  `json:"status"`
+}
+
 type VoteCandidateInfo struct {
 	Id             uint64 `json:"id"`
 	TopicId        uint64 `json:"topicId"`

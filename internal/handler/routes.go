@@ -56,6 +56,16 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			},
 			{
 				Method:  http.MethodGet,
+				Path:    "/admin/users",
+				Handler: AdminListUsersHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/admin/users/:id",
+				Handler: AdminUpdateUserHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
 				Path:    "/admin/weekly-votes",
 				Handler: AdminListWeeklyVotesHandler(serverCtx),
 			},
