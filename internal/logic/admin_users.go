@@ -14,6 +14,11 @@ type adminUserQuery struct {
 	Keyword  string
 }
 
+type adminUserTopicCountRow struct {
+	UserId     uint64 `db:"user_id"`
+	TopicCount int64  `db:"topic_count"`
+}
+
 type adminUserProfileInput struct {
 	Nickname string
 	Email    string
@@ -81,4 +86,30 @@ func normalizeAdminUserProfileInput(req *types.AdminUpdateUserReq) (adminUserPro
 		Avatar:   strings.TrimSpace(req.Avatar),
 		Status:   status,
 	}, nil
+}
+
+func adminUserIDs(users []types.AdminUserInfo) []uint64 {
+	ids := make([]uint64, 0, len(users))
+	for _, user := range users {
+		ids = append(ids, user.Id)
+	}
+	return ids
+}
+
+func applyAdminUserTopicCounts(users []types.AdminUserInfo, counts map[uint64]int64) {
+	for index := range users {
+		users[index].TopicCount = counts[users[index].Id]
+	}
+}
+
+func buildQuestionPlaceholders(count int) string {
+	if count <= 0 {
+		return ""
+	}
+
+	parts := make([]string, count)
+	for index := range parts {
+		parts[index] = "?"
+	}
+	return strings.Join(parts, ",")
 }

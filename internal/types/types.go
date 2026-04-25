@@ -453,6 +453,7 @@ type AdminUserInfo struct {
 	Nickname    string `json:"nickname"`
 	Avatar      string `json:"avatar"`
 	Status      int64  `json:"status"`
+	TopicCount  int64  `json:"topicCount"`
 	CreatedAt   string `json:"createdAt"`
 	LastLoginAt string `json:"lastLoginAt,optional"`
 }
@@ -465,9 +466,9 @@ type AdminUserSummary struct {
 }
 
 type AdminUserListData struct {
-	List       []AdminUserInfo   `json:"list"`
-	Pagination Pagination        `json:"pagination"`
-	Summary    AdminUserSummary  `json:"summary"`
+	List       []AdminUserInfo  `json:"list"`
+	Pagination Pagination       `json:"pagination"`
+	Summary    AdminUserSummary `json:"summary"`
 }
 
 type AdminUserListResp struct {

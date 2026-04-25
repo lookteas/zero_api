@@ -56,3 +56,22 @@ func TestNormalizeAdminUserProfileInputTrimsOptionalFields(t *testing.T) {
 		t.Fatalf("expected trimmed avatar, got %q", input.Avatar)
 	}
 }
+
+func TestApplyAdminUserTopicCountsAttachesCountsToMatchingUsers(t *testing.T) {
+	users := []types.AdminUserInfo{
+		{Id: 1, Account: "alice"},
+		{Id: 2, Account: "bob"},
+	}
+	counts := map[uint64]int64{
+		1: 3,
+	}
+
+	applyAdminUserTopicCounts(users, counts)
+
+	if users[0].TopicCount != 3 {
+		t.Fatalf("expected alice topic count 3, got %d", users[0].TopicCount)
+	}
+	if users[1].TopicCount != 0 {
+		t.Fatalf("expected bob topic count 0, got %d", users[1].TopicCount)
+	}
+}

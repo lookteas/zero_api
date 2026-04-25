@@ -71,6 +71,11 @@ func (l *AdminListUsersLogic) AdminListUsers(req *types.AdminUserQueryReq) (resp
 		copied := item
 		list = append(list, adminUserToInfo(&copied))
 	}
+	topicCounts, err := queryAdminUserTopicCounts(l.ctx, l.svcCtx.DB, adminUserIDs(list))
+	if err != nil {
+		return nil, err
+	}
+	applyAdminUserTopicCounts(list, topicCounts)
 
 	return &types.AdminUserListResp{
 		Code:    0,
@@ -81,6 +86,29 @@ func (l *AdminListUsersLogic) AdminListUsers(req *types.AdminUserQueryReq) (resp
 			Summary:    summary,
 		},
 	}, nil
+}
+
+func queryAdminUserTopicCounts(ctx context.Context, db sqlx.SqlConn, userIDs []uint64) (map[uint64]int64, error) {
+	counts := make(map[uint64]int64, len(userIDs))
+	if len(userIDs) == 0 {
+		return counts, nil
+	}
+
+	args := make([]any, 0, len(userIDs))
+	for _, userID := range userIDs {
+		args = append(args, userID)
+	}
+
+	query := "select user_id, count(1) as topic_count from daily_tasks where user_id in (" + buildQuestionPlaceholders(len(userIDs)) + ") group by user_id"
+	var rows []adminUserTopicCountRow
+	if err := db.QueryRowsCtx(ctx, &rows, query, args...); err != nil {
+		return nil, fmt.Errorf("query user topic counts: %w", err)
+	}
+
+	for _, row := range rows {
+		counts[row.UserId] = row.TopicCount
+	}
+	return counts, nil
 }
 
 func buildAdminUsersWhere(query adminUserQuery) (string, []any) {

@@ -153,6 +153,7 @@ type (
 		nickname    string `json:"nickname"`
 		avatar      string `json:"avatar"`
 		status      int64  `json:"status"`
+		topicCount  int64  `json:"topicCount"`
 		createdAt   string `json:"createdAt"`
 		lastLoginAt string `json:"lastLoginAt,optional"`
 	}
