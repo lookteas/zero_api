@@ -1,4 +1,4 @@
-﻿// Code scaffolded by goctl. Safe to edit.
+// Code scaffolded by goctl. Safe to edit.
 // goctl 1.9.2
 
 package main
@@ -11,7 +11,6 @@ import (
 	"api/internal/handler"
 	"api/internal/svc"
 
-	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
 )
 
@@ -21,7 +20,7 @@ func main() {
 	flag.Parse()
 
 	var c config.Config
-	conf.MustLoad(*configFile, &c)
+	config.MustLoad(*configFile, &c)
 
 	server := rest.MustNewServer(c.RestConf, rest.WithCors())
 	defer server.Stop()

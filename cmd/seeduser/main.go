@@ -9,11 +9,10 @@ import (
 	"api/internal/config"
 	"api/model"
 
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/zeromicro/go-zero/core/conf"
-	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"crypto/sha256"
 	"encoding/hex"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
 var configFile = flag.String("f", "../../etc/zero-api.yaml", "config file")
@@ -22,7 +21,7 @@ func main() {
 	flag.Parse()
 
 	var c config.Config
-	conf.MustLoad(*configFile, &c)
+	config.MustLoad(*configFile, &c)
 
 	conn := sqlx.NewMysql(c.Mysql.DataSource)
 	usersModel := model.NewUsersModel(conn)

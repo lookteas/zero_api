@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"regexp"
+	"sort"
 	"strings"
 
 	"api/internal/config"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -22,7 +21,7 @@ func main() {
 	flag.Parse()
 
 	var c config.Config
-	conf.MustLoad(*configFile, &c)
+	config.MustLoad(*configFile, &c)
 
 	if c.Mysql.DataSource == "" {
 		panic("mysql datasource is empty")
