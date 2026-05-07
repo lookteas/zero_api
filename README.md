@@ -437,6 +437,101 @@ go run zero.go -f etc/zero-api.yaml
 
 ---
 
+## 线上同步更新
+
+如果服务器上已经有 `apps/api` 源码，并且 `zero-api` 这个 systemd 服务里执行的是：
+
+```bash
+go run zero.go -f etc/zero-api.yaml
+```
+
+可以直接在服务器源码目录执行脚本：
+
+```bash
+cd /opt/zero/apps/api
+bash ./scripts/deploy-api.sh
+```
+
+脚本会依次执行：
+
+- `git pull --ff-only`
+- `go test ./...`
+- 检查 `zero-api` systemd 服务是否存在
+- 提醒服务定义里是否包含 `go run zero.go -f ...`
+- `systemctl restart zero-api`
+- `systemctl status zero-api --no-pager`
+- `curl` 检查本机 API 地址
+
+常用环境变量：
+
+- `ZERO_API_CONFIG`：配置文件路径，默认 `etc/zero-api.yaml`。
+- `ZERO_API_SERVICE`：systemd 服务名，默认 `zero-api`。
+- `ZERO_API_HEALTH_CHECK_URL`：健康检查地址，默认 `http://127.0.0.1:8888/api/v1/health`。
+- `ZERO_API_RUN_TESTS=0`：跳过 `go test ./...`。
+- `ZERO_API_GIT_PULL=0`：跳过 `git pull --ff-only`。
+
+例如只重启当前代码、不拉取、不跑测试：
+
+```bash
+cd /opt/zero/apps/api
+ZERO_API_GIT_PULL=0 ZERO_API_RUN_TESTS=0 bash ./scripts/deploy-api.sh
+```
+
+如果要看实时日志：
+
+```bash
+journalctl -u zero-api -f
+```
+
+如果后面改成“本机构建二进制再上传”的发布方式，也可以使用 `scripts/deploy-api.ps1`：
+
+```powershell
+cd apps/api
+.\scripts\deploy-api.ps1 `
+  -HostName your-server.com `
+  -UserName root `
+  -RemotePath /opt/zero/apps/api `
+  -ServiceName zero-api
+```
+
+这个 PowerShell 脚本会依次执行：
+
+- `go test ./...`
+- `GOOS=linux GOARCH=amd64 go build`
+- 通过 `scp` 上传二进制到服务器
+- 远端备份旧二进制为 `.bak.<时间戳>`
+- 替换 `/opt/zero/apps/api/zero-api`
+- `systemctl restart zero-api`
+- `systemctl status zero-api --no-pager`
+- `curl` 检查本机 API 地址
+
+PowerShell 脚本常用参数：
+
+- `RemotePath`：线上 API 目录，默认建议 `/opt/zero/apps/api`。
+- `ServiceName`：systemd 服务名，默认 `zero-api`。
+- `RemoteConfigPath`：线上配置文件路径，默认是 `<RemotePath>/etc/zero-api.yaml`。
+- `HealthCheckUrl`：重启后的健康检查地址，默认 `http://127.0.0.1:8888/api/v1/health`。
+- `GoArch`：服务器 CPU 架构，默认 `amd64`；ARM 服务器可改成 `arm64`。
+- `SkipTests`：跳过本地 Go 测试，仅建议紧急回滚或已单独跑过测试时使用。
+
+示例：服务器 SSH 端口不是 22，且线上配置放在固定路径：
+
+```powershell
+cd apps/api
+.\scripts\deploy-api.ps1 `
+  -HostName your-server.com `
+  -UserName root `
+  -Port 2222 `
+  -RemotePath /opt/zero/apps/api `
+  -ServiceName zero-api `
+  -RemoteConfigPath /opt/zero/apps/api/etc/zero-api.yaml `
+  -HealthCheckUrl http://127.0.0.1:8888/api/v1/health
+```
+
+脚本不会上传本地 `etc/zero-api.yaml`，生产数据库连接等敏感配置应保留在线上。
+
+---
+
 ## 鉴权与上下文注入说明
 
 当前项目的“当前用户 / 当前管理员”是通过请求头注入上下文：

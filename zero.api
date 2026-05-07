@@ -194,6 +194,11 @@ type (
 		requestId string   `json:"requestId,optional"`
 		data      HomeData `json:"data"`
 	}
+	HealthResp {
+		code      int64  `json:"code"`
+		message   string `json:"message"`
+		requestId string `json:"requestId,optional"`
+	}
 	TopicListData {
 		list       []TopicInfo `json:"list"`
 		pagination Pagination  `json:"pagination"`
@@ -444,6 +449,9 @@ type (
 )
 
 service zero-api {
+	@handler Health
+	get /health returns (HealthResp)
+
 	@handler SendVerifyCode
 	post /auth/verify-codes (SendVerifyCodeReq) returns (SimpleResp)
 

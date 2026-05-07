@@ -161,6 +161,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			},
 			{
 				Method:  http.MethodGet,
+				Path:    "/health",
+				Handler: HealthHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
 				Path:    "/me",
 				Handler: GetMeHandler(serverCtx),
 			},

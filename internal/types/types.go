@@ -199,6 +199,12 @@ type HomeResp struct {
 	Data      HomeData `json:"data"`
 }
 
+type HealthResp struct {
+	Code      int64  `json:"code"`
+	Message   string `json:"message"`
+	RequestId string `json:"requestId,optional"`
+}
+
 type LoginData struct {
 	AccessToken  string   `json:"accessToken"`
 	RefreshToken string   `json:"refreshToken"`

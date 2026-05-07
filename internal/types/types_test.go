@@ -16,3 +16,14 @@ func TestHomeDataTodayTaskUsesPointerType(t *testing.T) {
 		t.Fatalf("expected TodayTask to be a pointer field, got %s", field.Type.Kind())
 	}
 }
+
+func TestHealthRespHasSimpleResponseShape(t *testing.T) {
+	t.Parallel()
+
+	respType := reflect.TypeOf(HealthResp{})
+	for _, fieldName := range []string{"Code", "Message", "RequestId"} {
+		if _, ok := respType.FieldByName(fieldName); !ok {
+			t.Fatalf("HealthResp missing field %s", fieldName)
+		}
+	}
+}
