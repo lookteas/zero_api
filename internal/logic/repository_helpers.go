@@ -71,7 +71,7 @@ func dailyTaskAccess(item *model.DailyTasks, now time.Time) dailyTaskAccessInfo 
 		anchor = item.SubmittedAt.Time
 	}
 
-	windowEndsAt := anchor.Add(24 * time.Hour)
+	windowEndsAt := anchor.Add(48 * time.Hour)
 	if !now.After(windowEndsAt) {
 		return dailyTaskAccessInfo{
 			CanEditContent: true,
