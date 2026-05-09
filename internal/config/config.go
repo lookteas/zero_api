@@ -23,10 +23,16 @@ type CycleConf struct {
 	TotalPoints int64
 }
 
+type HypnosisConf struct {
+	ReplacementRulesPath string
+	MaxUploadBytes       int64
+}
+
 type Config struct {
 	rest.RestConf
-	Mysql MysqlConf
-	Cycle CycleConf
+	Mysql    MysqlConf
+	Cycle    CycleConf
+	Hypnosis HypnosisConf
 }
 
 func Load(file string, v *Config) error {
@@ -46,6 +52,7 @@ func Load(file string, v *Config) error {
 	}
 
 	normalizeLegacyCycle(raw)
+	normalizeHypnosisDefaults(raw)
 
 	encoded, err := json.Marshal(raw)
 	if err != nil {
@@ -81,6 +88,20 @@ func normalizeLegacyCycle(raw map[string]any) {
 
 	raw["Cycle"] = map[string]any{
 		"TotalPoints": points,
+	}
+}
+
+func normalizeHypnosisDefaults(raw map[string]any) {
+	if _, ok := raw["Hypnosis"]; ok {
+		return
+	}
+	if _, ok := raw["hypnosis"]; ok {
+		return
+	}
+
+	raw["Hypnosis"] = map[string]any{
+		"ReplacementRulesPath": "etc/hypnosis-replacements.json",
+		"MaxUploadBytes":       20971520,
 	}
 }
 

@@ -452,6 +452,9 @@ service zero-api {
 	@handler Health
 	get /health returns (HealthResp)
 
+	@handler StandardizeHypnosisDocument
+	post /hypnosis-documents/standardize returns (SimpleResp)
+
 	@handler SendVerifyCode
 	post /auth/verify-codes (SendVerifyCodeReq) returns (SimpleResp)
 
