@@ -41,6 +41,8 @@ func TestStandardizeDocxReplacesTermsAndSpeakers(t *testing.T) {
 		"互催时长：", "约1分钟",
 		"主催名称：", "星岩",
 		"被催名称：", "瑞祥",
+		"主催复盘：",
+		"被催复盘：",
 		"主催(00:00:01): 请连接攻防系统和灵核。",
 		"被催(00:00:09): 看到二灵，也有70%的真实度。",
 	} {
@@ -54,7 +56,7 @@ func TestStandardizeDocxReplacesTermsAndSpeakers(t *testing.T) {
 		`<w:jc w:val="left"/>`,
 		`<w:tcW w:w="1600" w:type="dxa"/>`,
 		`<w:tcW w:w="7800" w:type="dxa"/>`,
-		`<w:color w:val="1F6F8B"/>`,
+		`<w:color w:val="0485B0"/>`,
 		`<w:color w:val="C26A1B"/>`,
 	} {
 		if !strings.Contains(text, want) {

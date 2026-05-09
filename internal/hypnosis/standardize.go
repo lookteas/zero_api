@@ -274,7 +274,7 @@ func colorSpeakerParagraphs(documentXML string) string {
 		text := paragraphText(paragraph)
 		switch {
 		case strings.HasPrefix(text, "主催("):
-			return colorParagraphRuns(paragraph, "1F6F8B")
+			return colorParagraphRuns(paragraph, "0485B0")
 		case strings.HasPrefix(text, "被催("):
 			return colorParagraphRuns(paragraph, "C26A1B")
 		default:
@@ -328,6 +328,8 @@ func prependInfoParagraphs(documentXML string, options StandardizeOptions) strin
 		{"互催时长：", options.Duration},
 		{"主催名称：", options.HostName},
 		{"被催名称：", options.SubjectName},
+		{"主催复盘：", ""},
+		{"被催复盘：", ""},
 	}
 
 	var b strings.Builder
