@@ -14,13 +14,11 @@ func TestStandardizeDocxReplacesTermsAndSpeakers(t *testing.T) {
 	})
 
 	output, err := StandardizeDocx(input, StandardizeOptions{
-		Topic:         "潜意识探索",
-		Date:          "2026年02月09日",
-		Duration:      "约2小时",
-		HostName:      "星岩",
-		SubjectName:   "瑞祥",
-		HostReview:    "主催观察到关键节点。",
-		SubjectReview: "被催记录到系统状态。",
+		Topic:       "潜意识探索",
+		Date:        "2026年02月09日",
+		Duration:    "约1分钟",
+		HostName:    "星岩",
+		SubjectName: "瑞祥",
 		Rules: ReplacementRules{
 			Terms: map[string][]string{
 				"灵核":   {"零和"},
@@ -40,17 +38,38 @@ func TestStandardizeDocxReplacesTermsAndSpeakers(t *testing.T) {
 	for _, want := range []string{
 		"互催主题：", "潜意识探索",
 		"互催日期：", "2026年02月09日",
-		"互催时长：", "约2小时",
+		"互催时长：", "约1分钟",
 		"主催名称：", "星岩",
 		"被催名称：", "瑞祥",
-		"主催复盘：", "主催观察到关键节点。",
-		"被催复盘：", "被催记录到系统状态。",
 		"主催(00:00:01): 请连接攻防系统和灵核。",
 		"被催(00:00:09): 看到二灵，也有70%的真实度。",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("document xml text missing %q in %q", want, text)
 		}
+	}
+}
+
+func TestAnalyzeDocxReturnsSpeakerOptionsAndEstimatedDuration(t *testing.T) {
+	input := buildTestDocx(t, []string{
+		"星岩(00:00:01): 放松。",
+		"瑞祥(00:00:08): 好的。",
+		"星岩(01:12:10): 结束。",
+	})
+
+	analysis, err := AnalyzeDocx(input)
+	if err != nil {
+		t.Fatalf("AnalyzeDocx returned error: %v", err)
+	}
+
+	if analysis.Speakers[0].Name != "星岩" || analysis.Speakers[0].Count != 2 {
+		t.Fatalf("expected top speaker 星岩 count 2, got %#v", analysis.Speakers)
+	}
+	if analysis.Speakers[1].Name != "瑞祥" || analysis.Speakers[1].Count != 1 {
+		t.Fatalf("expected second speaker 瑞祥 count 1, got %#v", analysis.Speakers)
+	}
+	if analysis.Duration != "约1小时13分钟" {
+		t.Fatalf("expected estimated duration, got %q", analysis.Duration)
 	}
 }
 

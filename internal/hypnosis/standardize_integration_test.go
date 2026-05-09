@@ -23,14 +23,12 @@ func TestStandardizeRealDocxWhenSamplePathIsProvided(t *testing.T) {
 	}
 
 	output, err := StandardizeDocx(content, StandardizeOptions{
-		Topic:         "潜意识探索",
-		Date:          "2026年02月09日",
-		Duration:      "约2小时",
-		HostName:      "星岩",
-		SubjectName:   "瑞祥",
-		HostReview:    "主催复盘",
-		SubjectReview: "被催复盘",
-		Rules:         rules,
+		Topic:       "潜意识探索",
+		Date:        "2026年02月09日",
+		Duration:    "约2小时",
+		HostName:    "星岩",
+		SubjectName: "瑞祥",
+		Rules:       rules,
 	})
 	if err != nil {
 		t.Fatalf("standardize sample docx: %v", err)

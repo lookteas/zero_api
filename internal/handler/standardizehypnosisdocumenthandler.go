@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -13,32 +12,8 @@ import (
 
 func StandardizeHypnosisDocumentHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		maxUploadBytes := svcCtx.Config.Hypnosis.MaxUploadBytes
-		if maxUploadBytes <= 0 {
-			maxUploadBytes = 20 << 20
-		}
-
-		r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
-		if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
-			http.Error(w, "上传文件过大或表单格式不正确", http.StatusBadRequest)
-			return
-		}
-
-		file, header, err := r.FormFile("file")
-		if err != nil {
-			http.Error(w, "请上传 docx 文件", http.StatusBadRequest)
-			return
-		}
-		defer file.Close()
-
-		if !strings.HasSuffix(strings.ToLower(header.Filename), ".docx") {
-			http.Error(w, "仅支持 docx 文件", http.StatusBadRequest)
-			return
-		}
-
-		content, err := io.ReadAll(file)
-		if err != nil {
-			http.Error(w, "读取上传文件失败", http.StatusBadRequest)
+		content, ok := readUploadedDocx(w, r, svcCtx)
+		if !ok {
 			return
 		}
 
@@ -53,14 +28,12 @@ func StandardizeHypnosisDocumentHandler(svcCtx *svc.ServiceContext) http.Handler
 		}
 
 		output, err := hypnosis.StandardizeDocx(content, hypnosis.StandardizeOptions{
-			Topic:         strings.TrimSpace(r.FormValue("topic")),
-			Date:          strings.TrimSpace(r.FormValue("date")),
-			Duration:      strings.TrimSpace(r.FormValue("duration")),
-			HostName:      strings.TrimSpace(r.FormValue("hostName")),
-			SubjectName:   strings.TrimSpace(r.FormValue("subjectName")),
-			HostReview:    strings.TrimSpace(r.FormValue("hostReview")),
-			SubjectReview: strings.TrimSpace(r.FormValue("subjectReview")),
-			Rules:         rules,
+			Topic:       strings.TrimSpace(r.FormValue("topic")),
+			Date:        strings.TrimSpace(r.FormValue("date")),
+			Duration:    strings.TrimSpace(r.FormValue("duration")),
+			HostName:    strings.TrimSpace(r.FormValue("hostName")),
+			SubjectName: strings.TrimSpace(r.FormValue("subjectName")),
+			Rules:       rules,
 		})
 		if err != nil {
 			http.Error(w, "处理 docx 文件失败", http.StatusBadRequest)

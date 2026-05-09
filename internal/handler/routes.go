@@ -166,6 +166,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			},
 			{
 				Method:  http.MethodPost,
+				Path:    "/hypnosis-documents/analyze",
+				Handler: AnalyzeHypnosisDocumentHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
 				Path:    "/hypnosis-documents/standardize",
 				Handler: StandardizeHypnosisDocumentHandler(serverCtx),
 			},

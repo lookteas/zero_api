@@ -18,25 +18,34 @@ type ReplacementRules struct {
 }
 
 type StandardizeOptions struct {
-	Topic         string
-	Date          string
-	Duration      string
-	HostName      string
-	SubjectName   string
-	HostReview    string
-	SubjectReview string
-	Rules         ReplacementRules
+	Topic       string
+	Date        string
+	Duration    string
+	HostName    string
+	SubjectName string
+	Rules       ReplacementRules
 }
 
 var speakerLinePattern = regexp.MustCompile(`^([^(]+)\(([0-9:]+)\):`)
 
-func DetectSpeakers(docx []byte) (map[string]int, error) {
+type SpeakerOption struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+type DocxAnalysis struct {
+	Speakers []SpeakerOption `json:"speakers"`
+	Duration string          `json:"duration"`
+}
+
+func AnalyzeDocx(docx []byte) (DocxAnalysis, error) {
 	documentXML, err := readDocumentXML(docx)
 	if err != nil {
-		return nil, err
+		return DocxAnalysis{}, err
 	}
 
-	speakers := map[string]int{}
+	counts := map[string]int{}
+	lastSeconds := 0
 	for _, paragraph := range documentParagraphTexts(documentXML) {
 		matches := speakerLinePattern.FindStringSubmatch(paragraph)
 		if len(matches) == 0 {
@@ -44,8 +53,39 @@ func DetectSpeakers(docx []byte) (map[string]int, error) {
 		}
 		speaker := strings.TrimSpace(matches[1])
 		if speaker != "" {
-			speakers[speaker]++
+			counts[speaker]++
 		}
+		if seconds, ok := parseTimestampSeconds(matches[2]); ok && seconds > lastSeconds {
+			lastSeconds = seconds
+		}
+	}
+
+	speakers := make([]SpeakerOption, 0, len(counts))
+	for name, count := range counts {
+		speakers = append(speakers, SpeakerOption{Name: name, Count: count})
+	}
+	sort.Slice(speakers, func(i, j int) bool {
+		if speakers[i].Count == speakers[j].Count {
+			return speakers[i].Name < speakers[j].Name
+		}
+		return speakers[i].Count > speakers[j].Count
+	})
+
+	return DocxAnalysis{
+		Speakers: speakers,
+		Duration: formatEstimatedDuration(lastSeconds),
+	}, nil
+}
+
+func DetectSpeakers(docx []byte) (map[string]int, error) {
+	analysis, err := AnalyzeDocx(docx)
+	if err != nil {
+		return nil, err
+	}
+
+	speakers := map[string]int{}
+	for _, speaker := range analysis.Speakers {
+		speakers[speaker.Name] = speaker.Count
 	}
 
 	return speakers, nil
@@ -252,8 +292,6 @@ func prependInfoParagraphs(documentXML string, options StandardizeOptions) strin
 		{"互催时长：", options.Duration},
 		{"主催名称：", options.HostName},
 		{"被催名称：", options.SubjectName},
-		{"主催复盘：", options.HostReview},
-		{"被催复盘：", options.SubjectReview},
 	}
 
 	var b strings.Builder
@@ -277,6 +315,50 @@ func prependInfoParagraphs(documentXML string, options StandardizeOptions) strin
 
 	insertAt := bodyStart + len("<w:body>")
 	return documentXML[:insertAt] + b.String() + documentXML[insertAt:]
+}
+
+func parseTimestampSeconds(value string) (int, bool) {
+	parts := strings.Split(value, ":")
+	if len(parts) != 3 {
+		return 0, false
+	}
+
+	total := 0
+	for _, part := range parts {
+		number := 0
+		for _, char := range part {
+			if char < '0' || char > '9' {
+				return 0, false
+			}
+			number = number*10 + int(char-'0')
+		}
+		total = total*60 + number
+	}
+	return total, true
+}
+
+func formatEstimatedDuration(seconds int) string {
+	if seconds <= 0 {
+		return ""
+	}
+
+	minutes := seconds / 60
+	if seconds%60 > 0 {
+		minutes++
+	}
+	if minutes <= 0 {
+		minutes = 1
+	}
+
+	hours := minutes / 60
+	remainingMinutes := minutes % 60
+	if hours == 0 {
+		return fmt.Sprintf("约%d分钟", remainingMinutes)
+	}
+	if remainingMinutes == 0 {
+		return fmt.Sprintf("约%d小时", hours)
+	}
+	return fmt.Sprintf("约%d小时%d分钟", hours, remainingMinutes)
 }
 
 func xmlEscape(value string) string {
