@@ -48,6 +48,19 @@ func TestStandardizeDocxReplacesTermsAndSpeakers(t *testing.T) {
 			t.Fatalf("document xml text missing %q in %q", want, text)
 		}
 	}
+
+	for _, want := range []string{
+		`<w:tblW w:w="5000" w:type="pct"/>`,
+		`<w:jc w:val="left"/>`,
+		`<w:tcW w:w="1600" w:type="dxa"/>`,
+		`<w:tcW w:w="7800" w:type="dxa"/>`,
+		`<w:color w:val="1F6F8B"/>`,
+		`<w:color w:val="C26A1B"/>`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("document xml style missing %q in %q", want, text)
+		}
+	}
 }
 
 func TestAnalyzeDocxReturnsSpeakerOptionsAndEstimatedDuration(t *testing.T) {

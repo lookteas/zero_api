@@ -100,6 +100,7 @@ func StandardizeDocx(docx []byte, options StandardizeOptions) ([]byte, error) {
 	standardizedXML := replaceTextNodes(documentXML, func(text string) string {
 		return standardizeText(text, options)
 	})
+	standardizedXML = colorSpeakerParagraphs(standardizedXML)
 	standardizedXML = prependInfoParagraphs(standardizedXML, options)
 
 	return replaceDocumentXML(docx, standardizedXML)
@@ -267,6 +268,41 @@ func replaceTextNodes(documentXML string, transform func(string) string) string 
 	})
 }
 
+func colorSpeakerParagraphs(documentXML string) string {
+	paragraphPattern := regexp.MustCompile(`(?s)<w:p\b[^>]*>.*?</w:p>`)
+	return paragraphPattern.ReplaceAllStringFunc(documentXML, func(paragraph string) string {
+		text := paragraphText(paragraph)
+		switch {
+		case strings.HasPrefix(text, "主催("):
+			return colorParagraphRuns(paragraph, "1F6F8B")
+		case strings.HasPrefix(text, "被催("):
+			return colorParagraphRuns(paragraph, "C26A1B")
+		default:
+			return paragraph
+		}
+	})
+}
+
+func colorParagraphRuns(paragraph string, color string) string {
+	runPattern := regexp.MustCompile(`(?s)<w:r>(.*?)</w:r>`)
+	return runPattern.ReplaceAllStringFunc(paragraph, func(run string) string {
+		inner := strings.TrimSuffix(strings.TrimPrefix(run, "<w:r>"), "</w:r>")
+		if strings.Contains(inner, "<w:rPr>") {
+			return strings.Replace(run, "<w:rPr>", `<w:rPr><w:color w:val="`+color+`"/>`, 1)
+		}
+		return `<w:r><w:rPr><w:color w:val="` + color + `"/></w:rPr>` + inner + `</w:r>`
+	})
+}
+
+func paragraphText(paragraphXML string) string {
+	textPattern := regexp.MustCompile(`(?s)<w:t[^>]*>(.*?)</w:t>`)
+	var b strings.Builder
+	for _, textMatch := range textPattern.FindAllStringSubmatch(paragraphXML, -1) {
+		b.WriteString(html.UnescapeString(textMatch[1]))
+	}
+	return b.String()
+}
+
 func documentParagraphTexts(documentXML string) []string {
 	paragraphPattern := regexp.MustCompile(`(?s)<w:p\b[^>]*>(.*?)</w:p>`)
 	textPattern := regexp.MustCompile(`(?s)<w:t[^>]*>(.*?)</w:t>`)
@@ -295,11 +331,11 @@ func prependInfoParagraphs(documentXML string, options StandardizeOptions) strin
 	}
 
 	var b strings.Builder
-	b.WriteString(`<w:tbl><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:color="000000"/><w:left w:val="single" w:sz="4" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:color="000000"/><w:right w:val="single" w:sz="4" w:color="000000"/><w:insideH w:val="single" w:sz="4" w:color="000000"/><w:insideV w:val="single" w:sz="4" w:color="000000"/></w:tblBorders></w:tblPr>`)
+	b.WriteString(`<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblLayout w:type="fixed"/><w:jc w:val="left"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="000000"/><w:left w:val="single" w:sz="4" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:color="000000"/><w:right w:val="single" w:sz="4" w:color="000000"/><w:insideH w:val="single" w:sz="4" w:color="000000"/><w:insideV w:val="single" w:sz="4" w:color="000000"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="1600"/><w:gridCol w:w="7800"/></w:tblGrid>`)
 	for _, row := range rows {
-		b.WriteString(`<w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>`)
+		b.WriteString(`<w:tr><w:tc><w:tcPr><w:tcW w:w="1600" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:jc w:val="left"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>`)
 		b.WriteString(xmlEscape(row[0]))
-		b.WriteString(`</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>`)
+		b.WriteString(`</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="7800" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:jc w:val="left"/></w:pPr><w:r><w:t>`)
 		b.WriteString(xmlEscape(row[1]))
 		b.WriteString(`</w:t></w:r></w:p></w:tc></w:tr>`)
 	}
