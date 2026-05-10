@@ -57,15 +57,44 @@ func TestRunSQLFilesUsesSinglePhysicalConnection(t *testing.T) {
 
 func TestResolveSQLDirPrefersWorktreeDocsSQL(t *testing.T) {
 	cwd := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(cwd, "docs", "sql"), 0755); err != nil {
+	localSQLDir := filepath.Join(cwd, "docs", "sql")
+	if err := os.MkdirAll(localSQLDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(localSQLDir, "001_init_schema.sql"), []byte("CREATE DATABASE zero_app;"), 0644); err != nil {
 		t.Fatal(err)
 	}
 
 	configFile := filepath.Join(cwd, "etc", "zero-api.yaml")
 	got := resolveSQLDir(configFile, cwd)
-	want := filepath.Join(cwd, "docs", "sql")
+	want := localSQLDir
 	if got != want {
 		t.Fatalf("expected worktree docs/sql %q, got %q", want, got)
+	}
+}
+
+func TestResolveSQLDirFallsBackWhenWorktreeDocsSQLLacksBaseline(t *testing.T) {
+	workspace := t.TempDir()
+	cwd := filepath.Join(workspace, "apps", "api", ".worktrees", "awareness-first-core")
+	localSQLDir := filepath.Join(cwd, "docs", "sql")
+	rootSQLDir := filepath.Join(workspace, "docs", "sql")
+	if err := os.MkdirAll(localSQLDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(localSQLDir, "006_awareness_first_core.sql"), []byte("CREATE TABLE awareness;"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(rootSQLDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(rootSQLDir, "001_init_schema.sql"), []byte("CREATE DATABASE zero_app;"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	configFile := filepath.Join(cwd, "etc", "zero-api.yaml")
+	got := resolveSQLDir(configFile, cwd)
+	if got != rootSQLDir {
+		t.Fatalf("expected workspace docs/sql %q, got %q", rootSQLDir, got)
 	}
 }
 

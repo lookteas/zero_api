@@ -64,12 +64,23 @@ func main() {
 }
 
 func resolveSQLDir(configFile, cwd string) string {
-	localSQLDir := filepath.Join(cwd, "docs", "sql")
-	if stat, err := os.Stat(localSQLDir); err == nil && stat.IsDir() {
-		return localSQLDir
+	candidates := []string{
+		filepath.Join(cwd, "docs", "sql"),
+		filepath.Clean(filepath.Join(cwd, "../../docs/sql")),
+		filepath.Clean(filepath.Join(cwd, "../../../../docs/sql")),
+	}
+	for _, candidate := range candidates {
+		if hasBaselineInitMigration(candidate) {
+			return candidate
+		}
 	}
 
 	return filepath.Clean(filepath.Join(filepath.Dir(configFile), "../../../docs/sql"))
+}
+
+func hasBaselineInitMigration(sqlDir string) bool {
+	stat, err := os.Stat(filepath.Join(sqlDir, "001_init_schema.sql"))
+	return err == nil && !stat.IsDir()
 }
 
 func openRawDB(dsn string) (*sql.DB, error) {
