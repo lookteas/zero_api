@@ -28,11 +28,17 @@ type HypnosisConf struct {
 	MaxUploadBytes       int64
 }
 
+type AwarenessCycleConf struct {
+	StartDate string `json:",default=2026-05-01"`
+	RestDays  int    `json:",default=7"`
+}
+
 type Config struct {
 	rest.RestConf
-	Mysql    MysqlConf
-	Cycle    CycleConf
-	Hypnosis HypnosisConf
+	Mysql          MysqlConf
+	Cycle          CycleConf
+	Hypnosis       HypnosisConf
+	AwarenessCycle AwarenessCycleConf
 }
 
 func Load(file string, v *Config) error {
