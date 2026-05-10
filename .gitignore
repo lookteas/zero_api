@@ -21,3 +21,6 @@
 Thumbs.db
 .vscode/
 .idea/
+
+# Local agent worktrees
+.worktrees/
