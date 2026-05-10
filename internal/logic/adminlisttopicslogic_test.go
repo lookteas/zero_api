@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"database/sql"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -16,12 +17,41 @@ import (
 
 type adminListTopicsDB struct {
 	sqlx.SqlConn
-	query string
+	query    string
+	settings map[string]string
+	execArgs []any
 }
 
 func (db *adminListTopicsDB) QueryRowsCtx(_ context.Context, _ any, query string, _ ...any) error {
 	db.query = query
 	return nil
+}
+
+func (db *adminListTopicsDB) QueryRowCtx(_ context.Context, v any, query string, args ...any) error {
+	db.query = query
+	if len(args) == 0 {
+		return sql.ErrNoRows
+	}
+	value, ok := db.settings[args[0].(string)]
+	if !ok {
+		return sql.ErrNoRows
+	}
+
+	target := reflect.ValueOf(v)
+	if target.Kind() != reflect.Pointer || target.IsNil() {
+		return nil
+	}
+	elem := target.Elem()
+	if elem.Kind() == reflect.String {
+		elem.SetString(value)
+	}
+	return nil
+}
+
+func (db *adminListTopicsDB) ExecCtx(_ context.Context, query string, args ...any) (sql.Result, error) {
+	db.query = query
+	db.execArgs = args
+	return nil, nil
 }
 
 type adminListAwarenessModel struct {
@@ -127,6 +157,48 @@ func TestAdminListTopicsWithWeekStartReturnsAwarenessSchedule(t *testing.T) {
 	}
 	if rest.Title != "本轮结束，休息整合中" {
 		t.Fatalf("expected rest title, got %q", rest.Title)
+	}
+}
+
+func TestAdminListTopicsWithWeekStartUsesStoredAwarenessCycleSettings(t *testing.T) {
+	t.Parallel()
+
+	awarenessModel := &adminListAwarenessModel{
+		points: []model.Awareness{
+			{AwarenessId: 101, PointTitle: "第一天", SortOrderGlobal: 1, Status: 1},
+			{AwarenessId: 102, PointTitle: "第二天", SortOrderGlobal: 2, Status: 1},
+		},
+	}
+	logic := NewAdminListTopicsLogic(WithCurrentAdminID(context.Background(), 1), &svc.ServiceContext{
+		Config: config.Config{
+			AwarenessCycle: config.AwarenessCycleConf{
+				StartDate: "2026-05-04",
+				RestDays:  7,
+			},
+		},
+		DB: &adminListTopicsDB{settings: map[string]string{
+			awarenessCycleStartDateKey: "2026-05-05",
+			awarenessCycleRestDaysKey:  "1",
+		}},
+		AwarenessModel: awarenessModel,
+	})
+
+	resp, err := logic.AdminListTopics(&types.TopicQueryReq{WeekStart: "2026-05-04"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if first := resp.Data.List[0]; !first.IsRestDay || first.ScheduleDate != "2026-05-04" {
+		t.Fatalf("expected pre-start rest item on 2026-05-04, got %+v", first)
+	}
+	if second := resp.Data.List[1]; second.IsRestDay || second.AwarenessId != 101 || second.ScheduleDate != "2026-05-05" {
+		t.Fatalf("expected stored start date to make 2026-05-05 first awareness day, got %+v", second)
+	}
+	if fourth := resp.Data.List[3]; !fourth.IsRestDay || fourth.ScheduleDate != "2026-05-07" {
+		t.Fatalf("expected stored restDays=1 to rest after two points, got %+v", fourth)
+	}
+	if fifth := resp.Data.List[4]; fifth.IsRestDay || fifth.AwarenessId != 101 || fifth.ScheduleDate != "2026-05-08" {
+		t.Fatalf("expected cycle restart after stored one rest day, got %+v", fifth)
 	}
 }
 

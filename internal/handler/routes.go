@@ -21,6 +21,16 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			},
 			{
 				Method:  http.MethodGet,
+				Path:    "/admin/awareness-cycle",
+				Handler: AdminGetAwarenessCycleHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/admin/awareness-cycle",
+				Handler: AdminUpdateAwarenessCycleHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
 				Path:    "/admin/discussions",
 				Handler: AdminListDiscussionsHandler(serverCtx),
 			},

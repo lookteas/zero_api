@@ -85,8 +85,10 @@ func (l *AdminListTopicsLogic) adminListAwarenessSchedule(req *types.TopicQueryR
 		}
 	}
 
-	startDate := parseAwarenessCycleStart(l.svcCtx.Config.AwarenessCycle.StartDate)
-	restDays := l.svcCtx.Config.AwarenessCycle.RestDays
+	startDate, restDays, err := getAwarenessCycleSettings(l.ctx, l.svcCtx)
+	if err != nil {
+		return nil, err
+	}
 	list := make([]types.TopicInfo, 0, 7)
 	for i := 0; i < 7; i++ {
 		date := normalizeDate(weekStart).AddDate(0, 0, i)

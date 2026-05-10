@@ -8,6 +8,37 @@ type AdminLoginReq struct {
 	Password string `json:"password"`
 }
 
+type AwarenessCycleUpdateReq struct {
+	StartDate string `json:"startDate"`
+	RestDays  int64  `json:"restDays,optional"`
+}
+
+type AwarenessCycleDayInfo struct {
+	Date        string `json:"date"`
+	Title       string `json:"title"`
+	Summary     string `json:"summary,optional"`
+	IsRestDay   bool   `json:"isRestDay"`
+	AwarenessId uint64 `json:"awarenessId,optional"`
+	OrderNo     int64  `json:"orderNo,optional"`
+}
+
+type AwarenessCycleAdminInfo struct {
+	StartDate              string                  `json:"startDate"`
+	RestDays               int64                   `json:"restDays"`
+	EligibleAwarenessCount int64                   `json:"eligibleAwarenessCount"`
+	WeekStart              string                  `json:"weekStart"`
+	NormalDayCount         int64                   `json:"normalDayCount"`
+	RestDayCount           int64                   `json:"restDayCount"`
+	WeekDays               []AwarenessCycleDayInfo `json:"weekDays"`
+}
+
+type AwarenessCycleAdminResp struct {
+	Code      int64                   `json:"code"`
+	Message   string                  `json:"message"`
+	RequestId string                  `json:"requestId,optional"`
+	Data      AwarenessCycleAdminInfo `json:"data"`
+}
+
 type CodeLoginReq struct {
 	TargetType  string `json:"targetType"`
 	TargetValue string `json:"targetValue"`

@@ -463,6 +463,33 @@ type (
 		username string `json:"username"`
 		password string `json:"password"`
 	}
+	AwarenessCycleUpdateReq {
+		startDate string `json:"startDate"`
+		restDays  int64  `json:"restDays,optional"`
+	}
+	AwarenessCycleDayInfo {
+		date        string `json:"date"`
+		title       string `json:"title"`
+		summary     string `json:"summary,optional"`
+		isRestDay   bool   `json:"isRestDay"`
+		awarenessId uint64 `json:"awarenessId,optional"`
+		orderNo     int64  `json:"orderNo,optional"`
+	}
+	AwarenessCycleAdminInfo {
+		startDate              string                  `json:"startDate"`
+		restDays               int64                   `json:"restDays"`
+		eligibleAwarenessCount int64                   `json:"eligibleAwarenessCount"`
+		weekStart              string                  `json:"weekStart"`
+		normalDayCount         int64                   `json:"normalDayCount"`
+		restDayCount           int64                   `json:"restDayCount"`
+		weekDays               []AwarenessCycleDayInfo `json:"weekDays"`
+	}
+	AwarenessCycleAdminResp {
+		code      int64                   `json:"code"`
+		message   string                  `json:"message"`
+		requestId string                  `json:"requestId,optional"`
+		data      AwarenessCycleAdminInfo `json:"data"`
+	}
 )
 
 service zero-api {
@@ -561,6 +588,12 @@ service zero-api {
 
 	@handler AdminLogin
 	post /admin/auth/login (AdminLoginReq) returns (LoginResp)
+
+	@handler AdminGetAwarenessCycle
+	get /admin/awareness-cycle returns (AwarenessCycleAdminResp)
+
+	@handler AdminUpdateAwarenessCycle
+	patch /admin/awareness-cycle (AwarenessCycleUpdateReq) returns (SimpleResp)
 
 	@handler AdminListTopics
 	get /admin/topics (TopicQueryReq) returns (TopicListResp)
