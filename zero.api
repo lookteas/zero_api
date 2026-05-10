@@ -23,12 +23,17 @@ type (
 		status   int64  `json:"status"`
 	}
 	TopicInfo {
-		id          uint64 `json:"id"`
-		title       string `json:"title"`
-		summary     string `json:"summary"`
-		description string `json:"description,optional"`
-		orderNo     int64  `json:"orderNo"`
-		status      int64  `json:"status"`
+		id             uint64 `json:"id"`
+		title          string `json:"title"`
+		summary        string `json:"summary"`
+		description    string `json:"description,optional"`
+		orderNo        int64  `json:"orderNo"`
+		status         int64  `json:"status"`
+		isRestDay      bool   `json:"isRestDay,optional"`
+		awarenessId    uint64 `json:"awarenessId,optional"`
+		awarenessTheme string `json:"awarenessTheme,optional"`
+		referenceMin   string `json:"referenceMin,optional"`
+		referenceMax   string `json:"referenceMax,optional"`
 	}
 	DailyTaskInfo {
 		id               uint64 `json:"id"`
@@ -398,10 +403,11 @@ type (
 		candidateId uint64 `json:"candidateId"`
 	}
 	TopicQueryReq {
-		page     int64  `form:"page,optional"`
-		pageSize int64  `form:"pageSize,optional"`
-		status   int64  `form:"status,optional"`
-		keyword  string `form:"keyword,optional"`
+		page      int64  `form:"page,optional"`
+		pageSize  int64  `form:"pageSize,optional"`
+		status    int64  `form:"status,optional"`
+		keyword   string `form:"keyword,optional"`
+		weekStart string `form:"weekStart,optional"`
 	}
 	TopicCreateReq {
 		title       string `json:"title"`

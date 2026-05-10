@@ -407,13 +407,18 @@ type TopicCreateReq struct {
 }
 
 type TopicInfo struct {
-	Id           uint64 `json:"id"`
-	Title        string `json:"title"`
-	Summary      string `json:"summary"`
-	Description  string `json:"description,optional"`
-	OrderNo      int64  `json:"orderNo"`
-	Status       int64  `json:"status"`
-	ScheduleDate string `json:"scheduleDate,optional"`
+	Id             uint64 `json:"id"`
+	Title          string `json:"title"`
+	Summary        string `json:"summary"`
+	Description    string `json:"description,optional"`
+	OrderNo        int64  `json:"orderNo"`
+	Status         int64  `json:"status"`
+	ScheduleDate   string `json:"scheduleDate,optional"`
+	IsRestDay      bool   `json:"isRestDay,optional"`
+	AwarenessId    uint64 `json:"awarenessId,optional"`
+	AwarenessTheme string `json:"awarenessTheme,optional"`
+	ReferenceMin   string `json:"referenceMin,optional"`
+	ReferenceMax   string `json:"referenceMax,optional"`
 }
 
 type TopicListData struct {
@@ -429,10 +434,11 @@ type TopicListResp struct {
 }
 
 type TopicQueryReq struct {
-	Page     int64  `form:"page,optional"`
-	PageSize int64  `form:"pageSize,optional"`
-	Status   int64  `form:"status,optional"`
-	Keyword  string `form:"keyword,optional"`
+	Page      int64  `form:"page,optional"`
+	PageSize  int64  `form:"pageSize,optional"`
+	Status    int64  `form:"status,optional"`
+	Keyword   string `form:"keyword,optional"`
+	WeekStart string `form:"weekStart,optional"`
 }
 
 type TopicUpdateReq struct {
