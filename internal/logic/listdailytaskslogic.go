@@ -49,14 +49,14 @@ func (l *ListDailyTasksLogic) ListDailyTasks(req *types.DailyTaskQueryReq) (resp
 		Code:    0,
 		Message: "ok",
 		Data: types.DailyTaskListData{
-			List: list,
+			List:       list,
 			Pagination: types.Pagination{Page: 1, PageSize: int64(len(list)), Total: int64(len(list))},
 		},
 	}, nil
 }
 
 func buildDailyTaskListQuery(userID uint64, req *types.DailyTaskQueryReq) (string, []any) {
-	query := "select id, user_id, task_date, topic_id, topic_order_no, topic_title, topic_summary, weakness, improvement_plan, verification_path, reflection_note, status, submitted_at, created_at, updated_at from daily_tasks where user_id = ?"
+	query := "select id, user_id, task_date, topic_id, awareness_id, topic_order_no, topic_title, topic_summary, weakness, improvement_plan, verification_path, reflection_note, status, submitted_at, created_at, updated_at from daily_tasks where user_id = ?"
 	args := []any{userID}
 
 	if req.Status != "" {

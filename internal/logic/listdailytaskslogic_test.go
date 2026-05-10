@@ -1,4 +1,4 @@
-﻿package logic
+package logic
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"api/internal/types"
 )
 
-func TestBuildDailyTaskListQueryAddsKeywordFilterAcrossHistoryFields(t *testing.T) {
+func TestListDailyTasksBuildQueryAddsAwarenessIdAndKeywordFilterAcrossHistoryFields(t *testing.T) {
 	t.Parallel()
 
 	query, args := buildDailyTaskListQuery(7, &types.DailyTaskQueryReq{
@@ -15,7 +15,7 @@ func TestBuildDailyTaskListQueryAddsKeywordFilterAcrossHistoryFields(t *testing.
 		Keyword:   "复盘",
 	})
 
-	expectedQuery := "select id, user_id, task_date, topic_id, topic_order_no, topic_title, topic_summary, weakness, improvement_plan, verification_path, reflection_note, status, submitted_at, created_at, updated_at from daily_tasks where user_id = ? and task_date >= ? and task_date <= ? and (topic_title like ? or weakness like ? or improvement_plan like ? or verification_path like ? or reflection_note like ?) order by task_date desc limit 100"
+	expectedQuery := "select id, user_id, task_date, topic_id, awareness_id, topic_order_no, topic_title, topic_summary, weakness, improvement_plan, verification_path, reflection_note, status, submitted_at, created_at, updated_at from daily_tasks where user_id = ? and task_date >= ? and task_date <= ? and (topic_title like ? or weakness like ? or improvement_plan like ? or verification_path like ? or reflection_note like ?) order by task_date desc limit 100"
 	if query != expectedQuery {
 		t.Fatalf("unexpected query:\n%s", query)
 	}

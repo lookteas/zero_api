@@ -64,9 +64,9 @@ func (l *GetMyTodayTaskLogic) GetMyTodayTask() (resp *types.DailyTaskResp, err e
 	if hasAwarenessCycle {
 		var matched *model.Awareness
 		if item.AwarenessId.Valid {
+			info.AwarenessId = uint64(item.AwarenessId.Int64)
 			matched = findAwarenessByID(points, uint64(item.AwarenessId.Int64))
-		}
-		if matched == nil && cycle.Awareness != nil {
+		} else if cycle.Awareness != nil {
 			matched = cycle.Awareness
 		}
 		info = applyAwarenessToDailyTaskInfo(info, matched)

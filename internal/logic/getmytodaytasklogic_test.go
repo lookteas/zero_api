@@ -139,6 +139,58 @@ func TestGetMyTodayTaskAttachesAwarenessInfoWithoutRefreshingSnapshot(t *testing
 	}
 }
 
+func TestGetMyTodayTaskDoesNotAttachCycleAwarenessWhenStoredAwarenessIdIsMissing(t *testing.T) {
+	t.Parallel()
+
+	taskDate := normalizeDate(time.Now())
+	dailyTasks := &recordingDailyTasksModel{
+		item: &model.DailyTasks{
+			Id:           1,
+			UserId:       1,
+			TaskDate:     taskDate,
+			AwarenessId:  sql.NullInt64{Int64: 99, Valid: true},
+			TopicId:      0,
+			TopicOrderNo: 99,
+			TopicTitle:   "stored snapshot title",
+			TopicSummary: "stored snapshot summary",
+			Status:       "draft",
+			CreatedAt:    taskDate,
+			UpdatedAt:    taskDate,
+		},
+	}
+	awarenessModel := &recordingAwarenessModel{
+		points: []model.Awareness{
+			{
+				AwarenessId:  1,
+				PointTitle:   "current cycle title",
+				Theme:        sql.NullString{String: "current theme", Valid: true},
+				Details:      sql.NullString{String: "current details", Valid: true},
+				ReferenceMin: sql.NullFloat64{Float64: 1, Valid: true},
+			},
+		},
+	}
+
+	logic := NewGetMyTodayTaskLogic(context.Background(), &svc.ServiceContext{
+		Config:          config.Config{AwarenessCycle: config.AwarenessCycleConf{StartDate: taskDate.Format("2006-01-02"), RestDays: 7}},
+		DailyTasksModel: dailyTasks,
+		AwarenessModel:  awarenessModel,
+	})
+	resp, err := logic.GetMyTodayTask()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.Data.AwarenessId != 99 {
+		t.Fatalf("expected stored awareness id 99, got %d", resp.Data.AwarenessId)
+	}
+	if resp.Data.AwarenessTitle != "" || resp.Data.AwarenessDetails != "" || resp.Data.ReferenceMin != "" {
+		t.Fatalf("expected no unrelated awareness metadata, got %+v", resp.Data)
+	}
+	if resp.Data.TopicTitle != "stored snapshot title" || resp.Data.TopicSummary != "stored snapshot summary" {
+		t.Fatalf("expected stored snapshot fields preserved, got %+v", resp.Data)
+	}
+}
+
 func TestGetMyTodayTaskReturnsRestStateWhenNoTaskExists(t *testing.T) {
 	t.Parallel()
 
