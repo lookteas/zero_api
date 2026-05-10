@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"os"
@@ -27,7 +29,12 @@ func main() {
 		panic("mysql datasource is empty")
 	}
 
-	sqlDir := filepath.Clean(filepath.Join(filepath.Dir(*configFile), "../../../docs/sql"))
+	cwd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+
+	sqlDir := resolveSQLDir(*configFile, cwd)
 	entries, err := os.ReadDir(sqlDir)
 	if err != nil {
 		panic(err)
@@ -43,11 +50,44 @@ func main() {
 	sort.Strings(sqlFiles)
 
 	bootstrapDSN := stripDatabaseFromDSN(c.Mysql.DataSource)
-	conn := sqlx.NewMysql(bootstrapDSN)
+	rawDB, err := openRawDB(bootstrapDSN)
+	if err != nil {
+		panic(err)
+	}
+	defer rawDB.Close()
+
+	if err = runSQLFiles(context.Background(), rawDB, sqlFiles); err != nil {
+		panic(err)
+	}
+
+	fmt.Println("database initialized successfully")
+}
+
+func resolveSQLDir(configFile, cwd string) string {
+	localSQLDir := filepath.Join(cwd, "docs", "sql")
+	if stat, err := os.Stat(localSQLDir); err == nil && stat.IsDir() {
+		return localSQLDir
+	}
+
+	return filepath.Clean(filepath.Join(filepath.Dir(configFile), "../../../docs/sql"))
+}
+
+func openRawDB(dsn string) (*sql.DB, error) {
+	conn := sqlx.NewMysql(dsn)
+	return conn.RawDB()
+}
+
+func runSQLFiles(ctx context.Context, db *sql.DB, sqlFiles []string) error {
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
 	for _, sqlFile := range sqlFiles {
 		content, readErr := os.ReadFile(sqlFile)
 		if readErr != nil {
-			panic(readErr)
+			return readErr
 		}
 
 		statements := splitSQLStatements(string(content))
@@ -56,13 +96,13 @@ func main() {
 				continue
 			}
 
-			if _, err = conn.Exec(stmt); err != nil {
-				panic(fmt.Errorf("execute sql failed: %w\nfile: %s\nstatement: %s", err, sqlFile, stmt))
+			if _, err = conn.ExecContext(ctx, stmt); err != nil {
+				return fmt.Errorf("execute sql failed: %w\nfile: %s\nstatement: %s", err, sqlFile, stmt)
 			}
 		}
 	}
 
-	fmt.Println("database initialized successfully")
+	return nil
 }
 
 func stripDatabaseFromDSN(dsn string) string {
