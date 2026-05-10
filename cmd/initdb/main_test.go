@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"testing"
 )
@@ -95,6 +96,70 @@ func TestResolveSQLDirFallsBackWhenWorktreeDocsSQLLacksBaseline(t *testing.T) {
 	got := resolveSQLDir(configFile, cwd)
 	if got != rootSQLDir {
 		t.Fatalf("expected workspace docs/sql %q, got %q", rootSQLDir, got)
+	}
+}
+
+func TestResolveSQLDirsIncludesWorkspaceAndLocalMigrations(t *testing.T) {
+	workspace := t.TempDir()
+	cwd := filepath.Join(workspace, "apps", "api")
+	localSQLDir := filepath.Join(cwd, "docs", "sql")
+	rootSQLDir := filepath.Join(workspace, "docs", "sql")
+	if err := os.MkdirAll(localSQLDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(localSQLDir, "006_awareness_first_core.sql"), []byte("CREATE TABLE app_settings;"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(rootSQLDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(rootSQLDir, "001_init_schema.sql"), []byte("CREATE DATABASE zero_app;"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	configFile := filepath.Join(cwd, "etc", "zero-api.yaml")
+	got := resolveSQLDirs(configFile, cwd)
+	want := []string{rootSQLDir, localSQLDir}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expected sql dirs %v, got %v", want, got)
+	}
+}
+
+func TestCollectSQLFilesKeepsDirectoryOrderAndSortsWithinEachDirectory(t *testing.T) {
+	dir := t.TempDir()
+	firstDir := filepath.Join(dir, "root")
+	secondDir := filepath.Join(dir, "local")
+	if err := os.MkdirAll(firstDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(secondDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range []struct {
+		dir  string
+		name string
+	}{
+		{firstDir, "002_second.sql"},
+		{firstDir, "001_first.sql"},
+		{secondDir, "006_local.sql"},
+	} {
+		if err := os.WriteFile(filepath.Join(item.dir, item.name), []byte("SELECT 1;"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got, err := collectSQLFiles([]string{firstDir, secondDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []string{
+		filepath.Join(firstDir, "001_first.sql"),
+		filepath.Join(firstDir, "002_second.sql"),
+		filepath.Join(secondDir, "006_local.sql"),
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expected sql files %v, got %v", want, got)
 	}
 }
 

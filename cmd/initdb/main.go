@@ -34,21 +34,10 @@ func main() {
 		panic(err)
 	}
 
-	sqlDir := resolveSQLDir(*configFile, cwd)
-	entries, err := os.ReadDir(sqlDir)
+	sqlFiles, err := collectSQLFiles(resolveSQLDirs(*configFile, cwd))
 	if err != nil {
 		panic(err)
 	}
-
-	sqlFiles := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
-			continue
-		}
-		sqlFiles = append(sqlFiles, filepath.Join(sqlDir, entry.Name()))
-	}
-	sort.Strings(sqlFiles)
-
 	bootstrapDSN := stripDatabaseFromDSN(c.Mysql.DataSource)
 	rawDB, err := openRawDB(bootstrapDSN)
 	if err != nil {
@@ -64,23 +53,77 @@ func main() {
 }
 
 func resolveSQLDir(configFile, cwd string) string {
-	candidates := []string{
-		filepath.Join(cwd, "docs", "sql"),
-		filepath.Clean(filepath.Join(cwd, "../../docs/sql")),
-		filepath.Clean(filepath.Join(cwd, "../../../../docs/sql")),
-	}
-	for _, candidate := range candidates {
-		if hasBaselineInitMigration(candidate) {
-			return candidate
-		}
+	dirs := resolveSQLDirs(configFile, cwd)
+	if len(dirs) > 0 {
+		return dirs[0]
 	}
 
 	return filepath.Clean(filepath.Join(filepath.Dir(configFile), "../../../docs/sql"))
 }
 
+func resolveSQLDirs(configFile, cwd string) []string {
+	candidates := []string{
+		filepath.Join(cwd, "docs", "sql"),
+		filepath.Clean(filepath.Join(cwd, "../../docs/sql")),
+		filepath.Clean(filepath.Join(cwd, "../../../../docs/sql")),
+	}
+	var baselineDir string
+	for _, candidate := range candidates {
+		if hasBaselineInitMigration(candidate) {
+			baselineDir = candidate
+			break
+		}
+	}
+	if baselineDir == "" {
+		baselineDir = filepath.Clean(filepath.Join(filepath.Dir(configFile), "../../../docs/sql"))
+	}
+
+	dirs := []string{baselineDir}
+	localSQLDir := filepath.Join(cwd, "docs", "sql")
+	if filepath.Clean(localSQLDir) != filepath.Clean(baselineDir) && hasSQLFiles(localSQLDir) {
+		dirs = append(dirs, localSQLDir)
+	}
+
+	return dirs
+}
+
 func hasBaselineInitMigration(sqlDir string) bool {
 	stat, err := os.Stat(filepath.Join(sqlDir, "001_init_schema.sql"))
 	return err == nil && !stat.IsDir()
+}
+
+func hasSQLFiles(sqlDir string) bool {
+	entries, err := os.ReadDir(sqlDir)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".sql") {
+			return true
+		}
+	}
+	return false
+}
+
+func collectSQLFiles(sqlDirs []string) ([]string, error) {
+	sqlFiles := make([]string, 0)
+	for _, sqlDir := range sqlDirs {
+		entries, err := os.ReadDir(sqlDir)
+		if err != nil {
+			return nil, err
+		}
+
+		localFiles := make([]string, 0, len(entries))
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
+				continue
+			}
+			localFiles = append(localFiles, filepath.Join(sqlDir, entry.Name()))
+		}
+		sort.Strings(localFiles)
+		sqlFiles = append(sqlFiles, localFiles...)
+	}
+	return sqlFiles, nil
 }
 
 func openRawDB(dsn string) (*sql.DB, error) {

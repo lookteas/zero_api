@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"api/internal/svc"
+
+	"github.com/go-sql-driver/mysql"
 )
 
 const (
@@ -89,9 +91,17 @@ func getAppSetting(ctx context.Context, svcCtx *svc.ServiceContext, key string) 
 	if err == sql.ErrNoRows {
 		return "", nil
 	}
+	if isMySQLTableMissing(err) {
+		return "", nil
+	}
 	if err != nil {
 		return "", fmt.Errorf("query app setting %s: %w", key, err)
 	}
 
 	return value, nil
+}
+
+func isMySQLTableMissing(err error) bool {
+	mysqlErr, ok := err.(*mysql.MySQLError)
+	return ok && mysqlErr.Number == 1146
 }
