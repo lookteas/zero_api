@@ -79,6 +79,17 @@ type DailyTaskInfo struct {
 	TopicTitle          string `json:"topicTitle"`
 	TopicSummary        string `json:"topicSummary"`
 	TopicDescription    string `json:"topicDescription,optional"`
+	AwarenessId         uint64 `json:"awarenessId,optional"`
+	AwarenessTitle      string `json:"awarenessTitle,optional"`
+	AwarenessTheme      string `json:"awarenessTheme,optional"`
+	AwarenessSummary    string `json:"awarenessSummary,optional"`
+	AwarenessDetails    string `json:"awarenessDetails,optional"`
+	ReferenceMin        string `json:"referenceMin,optional"`
+	ReferenceMax        string `json:"referenceMax,optional"`
+	BetterDirection     string `json:"betterDirection,optional"`
+	IsRestDay           bool   `json:"isRestDay"`
+	RestTitle           string `json:"restTitle,optional"`
+	RestDescription     string `json:"restDescription,optional"`
 	Weakness            string `json:"weakness,optional"`
 	ImprovementPlan     string `json:"improvementPlan,optional"`
 	VerificationPath    string `json:"verificationPath,optional"`

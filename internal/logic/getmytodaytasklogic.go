@@ -36,28 +36,41 @@ func (l *GetMyTodayTaskLogic) GetMyTodayTask() (resp *types.DailyTaskResp, err e
 	}
 
 	today := normalizeDate(time.Now())
-	var matchedTopic *model.Topics
+	var points []model.Awareness
+	var cycle awarenessCycleResult
+	hasAwarenessCycle := false
+	if l.svcCtx.AwarenessModel != nil {
+		eligible, awarenessErr := l.svcCtx.AwarenessModel.FindEligible(l.ctx)
+		if awarenessErr == nil {
+			points = eligible
+			cycle = resolveAwarenessCycleDay(parseAwarenessCycleStart(l.svcCtx.Config.AwarenessCycle.StartDate), today, l.svcCtx.Config.AwarenessCycle.RestDays, points)
+			hasAwarenessCycle = true
+		}
+	}
+
 	item, err := l.svcCtx.DailyTasksModel.FindOneByUserIdTaskDate(l.ctx, currentUserID(l.ctx), today)
 	if err != nil {
 		if err == model.ErrNotFound {
+			if hasAwarenessCycle && (cycle.IsPreStart || cycle.IsRestDay || cycle.Awareness == nil) {
+				return &types.DailyTaskResp{Code: 0, Message: "ok", Data: restDailyTaskInfo(today)}, nil
+			}
 			return nil, status.Error(codes.NotFound, "today task not found")
 		}
 
 		return nil, err
 	}
 
-	if l.svcCtx.TopicsModel != nil {
-		topic, topicErr := l.svcCtx.TopicsModel.FindLatestActiveByScheduleDate(l.ctx, item.TaskDate)
-		if topicErr == nil && shouldRefreshTodayTaskTopic(item, topic) {
-			refreshed := refreshTodayTaskTopicSnapshot(item, topic)
-			if updateErr := l.svcCtx.DailyTasksModel.Update(l.ctx, refreshed); updateErr == nil {
-				item = refreshed
-			}
+	info := dailyTaskToInfo(item)
+	if hasAwarenessCycle {
+		var matched *model.Awareness
+		if item.AwarenessId.Valid {
+			matched = findAwarenessByID(points, uint64(item.AwarenessId.Int64))
 		}
-		if topicErr == nil {
-			matchedTopic = topic
+		if matched == nil && cycle.Awareness != nil {
+			matched = cycle.Awareness
 		}
+		info = applyAwarenessToDailyTaskInfo(info, matched)
 	}
 
-	return &types.DailyTaskResp{Code: 0, Message: "ok", Data: dailyTaskToInfoWithTopic(item, matchedTopic)}, nil
+	return &types.DailyTaskResp{Code: 0, Message: "ok", Data: info}, nil
 }

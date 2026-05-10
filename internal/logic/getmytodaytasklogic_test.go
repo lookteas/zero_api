@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"api/internal/config"
 	"api/internal/svc"
 	"api/model"
 
@@ -89,76 +90,78 @@ func TestNormalizeDateClearsTimePortion(t *testing.T) {
 	}
 }
 
-type recordingTopicsLookupModel struct {
-	model.TopicsModel
-	seenDate time.Time
-	item     *model.Topics
-	err      error
-}
-
-func (m *recordingTopicsLookupModel) Insert(context.Context, *model.Topics) (sql.Result, error) {
-	panic("unexpected call")
-}
-func (m *recordingTopicsLookupModel) FindOne(context.Context, uint64) (*model.Topics, error) {
-	panic("unexpected call")
-}
-func (m *recordingTopicsLookupModel) FindOneByOrderNo(context.Context, int64) (*model.Topics, error) {
-	panic("unexpected call")
-}
-func (m *recordingTopicsLookupModel) FindLatestActiveByScheduleDate(_ context.Context, scheduleDate time.Time) (*model.Topics, error) {
-	m.seenDate = scheduleDate
-	return m.item, m.err
-}
-func (m *recordingTopicsLookupModel) Update(context.Context, *model.Topics) error {
-	panic("unexpected call")
-}
-func (m *recordingTopicsLookupModel) Delete(context.Context, uint64) error       { panic("unexpected call") }
-func (m *recordingTopicsLookupModel) withSession(sqlx.Session) model.TopicsModel { return m }
-
-func TestGetMyTodayTaskRefreshesEmptyDraftSnapshotWhenScheduledTopicChanged(t *testing.T) {
+func TestGetMyTodayTaskAttachesAwarenessInfoWithoutRefreshingSnapshot(t *testing.T) {
 	t.Parallel()
 
 	taskDate := normalizeDate(time.Now())
-	description := "今天围绕这一点练，把情境、动作和判断标准都看清楚。"
+	awareness := model.Awareness{
+		AwarenessId:     33,
+		PointTitle:      "当日意识点",
+		Theme:           sql.NullString{String: "今日主题", Valid: true},
+		Summary:         sql.NullString{String: "今日摘要", Valid: true},
+		Details:         sql.NullString{String: "今日细节", Valid: true},
+		SortOrderGlobal: 1,
+	}
 	dailyTasks := &recordingDailyTasksModel{
 		item: &model.DailyTasks{
 			Id:           1,
 			UserId:       1,
 			TaskDate:     taskDate,
-			TopicId:      1,
+			AwarenessId:  sql.NullInt64{Int64: int64(awareness.AwarenessId), Valid: true},
+			TopicId:      0,
 			TopicOrderNo: 1,
-			TopicTitle:   "stale topic",
-			TopicSummary: "stale summary",
+			TopicTitle:   "snapshot title",
+			TopicSummary: "snapshot summary",
 			Status:       "draft",
 			CreatedAt:    taskDate,
 			UpdatedAt:    taskDate,
 		},
 	}
-	topics := &recordingTopicsLookupModel{
-		item: &model.Topics{
-			Id:          19,
-			Title:       "scheduled topic",
-			Summary:     "scheduled summary",
-			Description: sql.NullString{String: description, Valid: true},
-			OrderNo:     19,
-			Status:      1,
-			CreatedAt:   taskDate,
-			UpdatedAt:   taskDate,
-		},
-	}
+	awarenessModel := &recordingAwarenessModel{points: []model.Awareness{awareness}}
 
-	logic := NewGetMyTodayTaskLogic(context.Background(), &svc.ServiceContext{DailyTasksModel: dailyTasks, TopicsModel: topics})
+	logic := NewGetMyTodayTaskLogic(context.Background(), &svc.ServiceContext{
+		Config:          config.Config{AwarenessCycle: config.AwarenessCycleConf{StartDate: taskDate.Format("2006-01-02"), RestDays: 7}},
+		DailyTasksModel: dailyTasks,
+		AwarenessModel:  awarenessModel,
+	})
 	resp, err := logic.GetMyTodayTask()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if dailyTasks.updatedItem == nil {
-		t.Fatalf("expected task snapshot refresh")
+	if dailyTasks.updatedItem != nil {
+		t.Fatalf("expected no task snapshot refresh")
 	}
-	if resp.Data.TopicTitle != "scheduled topic" || resp.Data.TopicOrderNo != 19 {
-		t.Fatalf("expected refreshed scheduled topic, got %+v", resp.Data)
+	if resp.Data.TopicTitle != "snapshot title" || resp.Data.TopicSummary != "snapshot summary" {
+		t.Fatalf("expected existing snapshot fields preserved, got %+v", resp.Data)
 	}
-	if resp.Data.TopicDescription != description {
-		t.Fatalf("expected topic description %q, got %q", description, resp.Data.TopicDescription)
+	if resp.Data.AwarenessId != awareness.AwarenessId || resp.Data.AwarenessTheme != awareness.Theme.String {
+		t.Fatalf("expected attached awareness fields, got %+v", resp.Data)
+	}
+}
+
+func TestGetMyTodayTaskReturnsRestStateWhenNoTaskExists(t *testing.T) {
+	t.Parallel()
+
+	dailyTasks := &recordingDailyTasksModel{err: model.ErrNotFound}
+	awarenessModel := &recordingAwarenessModel{
+		points: []model.Awareness{
+			{AwarenessId: 1, PointTitle: "only point", SortOrderGlobal: 1},
+		},
+	}
+
+	logic := NewGetMyTodayTaskLogic(context.Background(), &svc.ServiceContext{
+		Config:          config.Config{AwarenessCycle: config.AwarenessCycleConf{StartDate: normalizeDate(time.Now()).AddDate(0, 0, -1).Format("2006-01-02"), RestDays: 7}},
+		DailyTasksModel: dailyTasks,
+		AwarenessModel:  awarenessModel,
+	})
+	resp, err := logic.GetMyTodayTask()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !resp.Data.IsRestDay {
+		t.Fatalf("expected rest daily task info, got %+v", resp.Data)
+	}
+	if resp.Data.RestTitle != "本轮结束，休息整合中" {
+		t.Fatalf("unexpected rest title %q", resp.Data.RestTitle)
 	}
 }

@@ -38,6 +38,17 @@ type (
 		topicTitle       string `json:"topicTitle"`
 		topicSummary     string `json:"topicSummary"`
 		topicDescription string `json:"topicDescription,optional"`
+		awarenessId      uint64 `json:"awarenessId,optional"`
+		awarenessTitle   string `json:"awarenessTitle,optional"`
+		awarenessTheme   string `json:"awarenessTheme,optional"`
+		awarenessSummary string `json:"awarenessSummary,optional"`
+		awarenessDetails string `json:"awarenessDetails,optional"`
+		referenceMin     string `json:"referenceMin,optional"`
+		referenceMax     string `json:"referenceMax,optional"`
+		betterDirection  string `json:"betterDirection,optional"`
+		isRestDay        bool   `json:"isRestDay"`
+		restTitle        string `json:"restTitle,optional"`
+		restDescription  string `json:"restDescription,optional"`
 		weakness         string `json:"weakness,optional"`
 		improvementPlan  string `json:"improvementPlan,optional"`
 		verificationPath string `json:"verificationPath,optional"`

@@ -30,41 +30,55 @@ func NewCreateDailyTaskLogic(ctx context.Context, svcCtx *svc.ServiceContext) *C
 }
 
 func (l *CreateDailyTaskLogic) CreateDailyTask(req *types.DailyTaskCreateReq) (resp *types.DailyTaskResp, err error) {
-	if l.svcCtx.DailyTasksModel == nil || l.svcCtx.TopicsModel == nil {
+	if l.svcCtx.DailyTasksModel == nil || l.svcCtx.AwarenessModel == nil {
 		return okDailyTask(), nil
 	}
 
 	taskDate := parseTaskDate(req.TaskDate)
 	userID := currentUserID(l.ctx)
 	existing, findErr := l.svcCtx.DailyTasksModel.FindOneByUserIdTaskDate(l.ctx, userID, taskDate)
-	if findErr == nil {
-		return &types.DailyTaskResp{Code: 0, Message: "ok", Data: dailyTaskToInfo(existing)}, nil
-	}
-
 	if findErr != nil && findErr != model.ErrNotFound {
 		return nil, findErr
 	}
 
-	topic, err := l.svcCtx.TopicsModel.FindLatestActiveByScheduleDate(l.ctx, taskDate)
+	points, err := l.svcCtx.AwarenessModel.FindEligible(l.ctx)
 	if err != nil {
 		return nil, err
 	}
 
+	cycle := resolveAwarenessCycleDay(parseAwarenessCycleStart(l.svcCtx.Config.AwarenessCycle.StartDate), taskDate, l.svcCtx.Config.AwarenessCycle.RestDays, points)
+	if findErr == nil {
+		info := dailyTaskToInfo(existing)
+		if existing.AwarenessId.Valid {
+			info = applyAwarenessToDailyTaskInfo(info, findAwarenessByID(points, uint64(existing.AwarenessId.Int64)))
+		} else if cycle.Awareness != nil {
+			info = applyAwarenessToDailyTaskInfo(info, cycle.Awareness)
+		}
+		return &types.DailyTaskResp{Code: 0, Message: "ok", Data: info}, nil
+	}
+
+	if cycle.IsPreStart || cycle.IsRestDay || cycle.Awareness == nil {
+		return &types.DailyTaskResp{Code: 0, Message: "ok", Data: restDailyTaskInfo(taskDate)}, nil
+	}
+
+	summary := awarenessSummary(cycle.Awareness)
+	now := time.Now()
 	data := &model.DailyTasks{
 		UserId:           userID,
 		TaskDate:         taskDate,
-		TopicId:          topic.Id,
-		TopicOrderNo:     topic.OrderNo,
-		TopicTitle:       topic.Title,
-		TopicSummary:     topic.Summary,
+		TopicId:          0,
+		AwarenessId:      sql.NullInt64{Int64: int64(cycle.Awareness.AwarenessId), Valid: true},
+		TopicOrderNo:     cycle.Awareness.SortOrderGlobal,
+		TopicTitle:       cycle.Awareness.PointTitle,
+		TopicSummary:     summary,
 		Weakness:         nullString(""),
 		ImprovementPlan:  nullString(""),
 		VerificationPath: nullString(""),
 		ReflectionNote:   nullString(""),
 		Status:           "draft",
 		SubmittedAt:      sql.NullTime{},
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}
 
 	result, err := l.svcCtx.DailyTasksModel.Insert(l.ctx, data)
@@ -82,5 +96,6 @@ func (l *CreateDailyTaskLogic) CreateDailyTask(req *types.DailyTaskCreateReq) (r
 		return nil, err
 	}
 
-	return &types.DailyTaskResp{Code: 0, Message: "ok", Data: dailyTaskToInfoWithTopic(item, topic)}, nil
+	info := applyAwarenessToDailyTaskInfo(dailyTaskToInfo(item), cycle.Awareness)
+	return &types.DailyTaskResp{Code: 0, Message: "ok", Data: info}, nil
 }

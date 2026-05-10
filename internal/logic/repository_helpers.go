@@ -120,6 +120,64 @@ func topicDescription(topic *model.Topics) string {
 	return topic.Description.String
 }
 
+func awarenessSummary(item *model.Awareness) string {
+	if item == nil {
+		return ""
+	}
+	if item.Summary.Valid {
+		return item.Summary.String
+	}
+	if item.Theme.Valid {
+		return item.Theme.String
+	}
+	return ""
+}
+
+func awarenessDetails(item *model.Awareness) string {
+	if item == nil || !item.Details.Valid {
+		return ""
+	}
+	return item.Details.String
+}
+
+func nullDecimalString(value sql.NullFloat64) string {
+	if !value.Valid {
+		return ""
+	}
+	return fmt.Sprintf("%.2f", value.Float64)
+}
+
+func applyAwarenessToDailyTaskInfo(info types.DailyTaskInfo, item *model.Awareness) types.DailyTaskInfo {
+	if item == nil {
+		return info
+	}
+
+	info.AwarenessId = item.AwarenessId
+	info.AwarenessTitle = item.PointTitle
+	if item.Theme.Valid {
+		info.AwarenessTheme = item.Theme.String
+	}
+	info.AwarenessSummary = awarenessSummary(item)
+	info.AwarenessDetails = awarenessDetails(item)
+	info.ReferenceMin = nullDecimalString(item.ReferenceMin)
+	info.ReferenceMax = nullDecimalString(item.ReferenceMax)
+	info.BetterDirection = item.BetterDirection
+	return info
+}
+
+func restDailyTaskInfo(taskDate time.Time) types.DailyTaskInfo {
+	now := time.Now().Format("2006-01-02 15:04:05")
+	return types.DailyTaskInfo{
+		TaskDate:        normalizeDate(taskDate).Format("2006-01-02"),
+		IsRestDay:       true,
+		RestTitle:       "本轮结束，休息整合中",
+		RestDescription: "今天不生成新的练习任务，可以回看历史打卡和到期复盘，把这一轮练过的意识点整合一下。",
+		Status:          "rest",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+}
+
 func dailyTaskToInfo(item *model.DailyTasks) types.DailyTaskInfo {
 	return dailyTaskToInfoWithTopic(item, nil)
 }
@@ -171,6 +229,15 @@ func dailyTaskToInfoWithTopic(item *model.DailyTasks, topic *model.Topics) types
 		CreatedAt:           item.CreatedAt.Format("2006-01-02 15:04:05"),
 		UpdatedAt:           item.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}
+}
+
+func findAwarenessByID(points []model.Awareness, awarenessID uint64) *model.Awareness {
+	for i := range points {
+		if points[i].AwarenessId == awarenessID {
+			return &points[i]
+		}
+	}
+	return nil
 }
 
 func parseTaskDate(input string) time.Time {
