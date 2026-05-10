@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	"api/internal/config"
 	"api/internal/svc"
@@ -13,6 +14,7 @@ import (
 
 func TestAdminGetAwarenessCycleReturnsSummaryWithConfigDefaults(t *testing.T) {
 	t.Parallel()
+	weekStart := currentWeekStart(time.Now())
 
 	awarenessModel := &adminListAwarenessModel{
 		points: []model.Awareness{
@@ -36,7 +38,7 @@ func TestAdminGetAwarenessCycleReturnsSummaryWithConfigDefaults(t *testing.T) {
 	logic := NewAdminGetAwarenessCycleLogic(WithCurrentAdminID(context.Background(), 1), &svc.ServiceContext{
 		Config: config.Config{
 			AwarenessCycle: config.AwarenessCycleConf{
-				StartDate: "2026-05-04",
+				StartDate: weekStart.Format("2006-01-02"),
 				RestDays:  7,
 			},
 		},
@@ -51,7 +53,7 @@ func TestAdminGetAwarenessCycleReturnsSummaryWithConfigDefaults(t *testing.T) {
 	if resp.Code != 0 || resp.Message != "ok" {
 		t.Fatalf("expected ok response, got %+v", resp)
 	}
-	if resp.Data.StartDate != "2026-05-04" || resp.Data.RestDays != 7 {
+	if resp.Data.StartDate != weekStart.Format("2006-01-02") || resp.Data.RestDays != 7 {
 		t.Fatalf("expected config cycle settings, got %+v", resp.Data)
 	}
 	if resp.Data.EligibleAwarenessCount != 2 {
@@ -64,11 +66,11 @@ func TestAdminGetAwarenessCycleReturnsSummaryWithConfigDefaults(t *testing.T) {
 		t.Fatalf("expected 7 week days, got %d", len(resp.Data.WeekDays))
 	}
 	first := resp.Data.WeekDays[0]
-	if first.Date != "2026-05-04" || first.AwarenessId != 201 || first.Title != "觉察呼吸" || first.IsRestDay {
+	if first.Date != weekStart.Format("2006-01-02") || first.AwarenessId != 201 || first.Title != "觉察呼吸" || first.IsRestDay {
 		t.Fatalf("expected first awareness day, got %+v", first)
 	}
 	third := resp.Data.WeekDays[2]
-	if third.Date != "2026-05-06" || !third.IsRestDay {
+	if third.Date != weekStart.AddDate(0, 0, 2).Format("2006-01-02") || !third.IsRestDay {
 		t.Fatalf("expected third day rest, got %+v", third)
 	}
 }
