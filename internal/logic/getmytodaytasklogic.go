@@ -43,7 +43,11 @@ func (l *GetMyTodayTaskLogic) GetMyTodayTask() (resp *types.DailyTaskResp, err e
 		eligible, awarenessErr := l.svcCtx.AwarenessModel.FindEligible(l.ctx)
 		if awarenessErr == nil {
 			points = eligible
-			cycle = resolveAwarenessCycleDay(parseAwarenessCycleStart(l.svcCtx.Config.AwarenessCycle.StartDate), today, l.svcCtx.Config.AwarenessCycle.RestDays, points)
+			startDate, restDays, settingsErr := getAwarenessCycleSettings(l.ctx, l.svcCtx)
+			if settingsErr != nil {
+				return nil, settingsErr
+			}
+			cycle = resolveAwarenessCycleDay(startDate, today, restDays, points)
 			hasAwarenessCycle = true
 		}
 	}
@@ -63,10 +67,24 @@ func (l *GetMyTodayTaskLogic) GetMyTodayTask() (resp *types.DailyTaskResp, err e
 	info := dailyTaskToInfo(item)
 	if hasAwarenessCycle {
 		var matched *model.Awareness
+		storedAwarenessMissing := false
 		if item.AwarenessId.Valid {
 			info.AwarenessId = uint64(item.AwarenessId.Int64)
 			matched = findAwarenessByID(points, uint64(item.AwarenessId.Int64))
-		} else if cycle.Awareness != nil {
+			storedAwarenessMissing = matched == nil
+		}
+		if !storedAwarenessMissing && shouldRefreshTodayTaskAwareness(item, cycle.Awareness) {
+			refreshed := refreshTodayTaskAwarenessSnapshot(item, cycle.Awareness)
+			if updateErr := l.svcCtx.DailyTasksModel.Update(l.ctx, refreshed); updateErr != nil {
+				return nil, updateErr
+			}
+			item = refreshed
+			info = dailyTaskToInfo(item)
+			matched = cycle.Awareness
+			if item.AwarenessId.Valid {
+				info.AwarenessId = uint64(item.AwarenessId.Int64)
+			}
+		} else if !item.AwarenessId.Valid && cycle.Awareness != nil {
 			matched = cycle.Awareness
 		}
 		info = applyAwarenessToDailyTaskInfo(info, matched)

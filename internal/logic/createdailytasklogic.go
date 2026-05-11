@@ -46,7 +46,12 @@ func (l *CreateDailyTaskLogic) CreateDailyTask(req *types.DailyTaskCreateReq) (r
 		return nil, err
 	}
 
-	cycle := resolveAwarenessCycleDay(parseAwarenessCycleStart(l.svcCtx.Config.AwarenessCycle.StartDate), taskDate, l.svcCtx.Config.AwarenessCycle.RestDays, points)
+	startDate, restDays, err := getAwarenessCycleSettings(l.ctx, l.svcCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	cycle := resolveAwarenessCycleDay(startDate, taskDate, restDays, points)
 	if findErr == nil {
 		info := dailyTaskToInfo(existing)
 		if existing.AwarenessId.Valid {

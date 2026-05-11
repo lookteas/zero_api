@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"database/sql"
+	"reflect"
 	"testing"
 	"time"
 
@@ -125,5 +126,79 @@ func TestCreateDailyTaskUsesAwarenessCycleForTaskDate(t *testing.T) {
 	}
 	if resp.Data.ReferenceMin != "1.20" || resp.Data.ReferenceMax != "3.40" {
 		t.Fatalf("expected formatted reference range, got min=%q max=%q", resp.Data.ReferenceMin, resp.Data.ReferenceMax)
+	}
+}
+
+type createTaskStoredSettingsDB struct {
+	sqlx.SqlConn
+	settings map[string]string
+}
+
+func (db createTaskStoredSettingsDB) QueryRowCtx(_ context.Context, v any, _ string, args ...any) error {
+	if len(args) == 0 {
+		return sql.ErrNoRows
+	}
+	value, ok := db.settings[args[0].(string)]
+	if !ok {
+		return sql.ErrNoRows
+	}
+
+	target := reflect.ValueOf(v)
+	if target.Kind() == reflect.Pointer && !target.IsNil() {
+		elem := target.Elem()
+		if elem.Kind() == reflect.String {
+			elem.SetString(value)
+		}
+	}
+	return nil
+}
+
+func TestCreateDailyTaskUsesStoredAwarenessCycleSettings(t *testing.T) {
+	t.Parallel()
+
+	taskDate := time.Date(2026, 5, 12, 0, 0, 0, 0, time.Local)
+	expected := model.Awareness{
+		AwarenessId:     202,
+		PointTitle:      "生命合一指数",
+		Summary:         sql.NullString{String: "生命合一摘要", Valid: true},
+		SortOrderGlobal: 2,
+	}
+	dailyTasks := &createDailyTasksModel{
+		findErr: model.ErrNotFound,
+		storedItem: &model.DailyTasks{
+			Id:           9,
+			UserId:       7,
+			TaskDate:     taskDate,
+			AwarenessId:  sql.NullInt64{Int64: int64(expected.AwarenessId), Valid: true},
+			TopicOrderNo: expected.SortOrderGlobal,
+			TopicTitle:   expected.PointTitle,
+			TopicSummary: expected.Summary.String,
+			Status:       "draft",
+			CreatedAt:    taskDate,
+			UpdatedAt:    taskDate,
+		},
+	}
+
+	logic := NewCreateDailyTaskLogic(WithCurrentUserID(context.Background(), 7), &svc.ServiceContext{
+		DailyTasksModel: dailyTasks,
+		AwarenessModel: &recordingAwarenessModel{points: []model.Awareness{
+			{AwarenessId: 201, PointTitle: "性别偏见程度 vs. 性别平等程度", SortOrderGlobal: 1},
+			expected,
+		}},
+		DB: createTaskStoredSettingsDB{settings: map[string]string{
+			awarenessCycleStartDateKey: "2026-05-11",
+			awarenessCycleRestDaysKey:  "7",
+		}},
+	})
+
+	resp, err := logic.CreateDailyTask(&types.DailyTaskCreateReq{TaskDate: "2026-05-12"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Data.AwarenessId != expected.AwarenessId || resp.Data.TopicTitle != expected.PointTitle {
+		t.Fatalf("expected stored cycle awareness %+v, got %+v", expected, resp.Data)
+	}
+	if !dailyTasks.inserted.AwarenessId.Valid || dailyTasks.inserted.AwarenessId.Int64 != int64(expected.AwarenessId) {
+		t.Fatalf("expected inserted awareness id %d, got %+v", expected.AwarenessId, dailyTasks.inserted.AwarenessId)
 	}
 }

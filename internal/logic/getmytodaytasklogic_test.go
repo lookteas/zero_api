@@ -217,3 +217,56 @@ func TestGetMyTodayTaskReturnsRestStateWhenNoTaskExists(t *testing.T) {
 		t.Fatalf("unexpected rest title %q", resp.Data.RestTitle)
 	}
 }
+
+func TestGetMyTodayTaskRefreshesDraftSnapshotFromStoredCycleSettings(t *testing.T) {
+	t.Parallel()
+
+	taskDate := normalizeDate(time.Now())
+	expected := model.Awareness{
+		AwarenessId:     302,
+		PointTitle:      "生命合一指数",
+		Summary:         sql.NullString{String: "生命合一摘要", Valid: true},
+		SortOrderGlobal: 2,
+	}
+	dailyTasks := &recordingDailyTasksModel{
+		item: &model.DailyTasks{
+			Id:           1,
+			UserId:       1,
+			TaskDate:     taskDate,
+			AwarenessId:  sql.NullInt64{Int64: 301, Valid: true},
+			TopicOrderNo: 1,
+			TopicTitle:   "性别偏见程度 vs. 性别平等程度",
+			TopicSummary: "旧摘要",
+			Weakness:     sql.NullString{String: "已经填写的内容", Valid: true},
+			Status:       "draft",
+			CreatedAt:    taskDate,
+			UpdatedAt:    taskDate,
+		},
+	}
+
+	logic := NewGetMyTodayTaskLogic(context.Background(), &svc.ServiceContext{
+		DailyTasksModel: dailyTasks,
+		AwarenessModel: &recordingAwarenessModel{points: []model.Awareness{
+			{AwarenessId: 301, PointTitle: "性别偏见程度 vs. 性别平等程度", SortOrderGlobal: 1},
+			expected,
+		}},
+		DB: createTaskStoredSettingsDB{settings: map[string]string{
+			awarenessCycleStartDateKey: taskDate.AddDate(0, 0, -1).Format("2006-01-02"),
+			awarenessCycleRestDaysKey:  "7",
+		}},
+	})
+
+	resp, err := logic.GetMyTodayTask()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if dailyTasks.updatedItem == nil {
+		t.Fatalf("expected draft task snapshot refresh")
+	}
+	if resp.Data.AwarenessId != expected.AwarenessId || resp.Data.TopicTitle != expected.PointTitle {
+		t.Fatalf("expected current cycle awareness %+v, got %+v", expected, resp.Data)
+	}
+	if resp.Data.Weakness != "已经填写的内容" {
+		t.Fatalf("expected existing draft content preserved, got %+v", resp.Data)
+	}
+}

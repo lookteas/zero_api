@@ -112,6 +112,33 @@ func refreshTodayTaskTopicSnapshot(item *model.DailyTasks, topic *model.Topics) 
 	return &cloned
 }
 
+func shouldRefreshTodayTaskAwareness(item *model.DailyTasks, awareness *model.Awareness) bool {
+	if item == nil || awareness == nil {
+		return false
+	}
+	if item.Status != "draft" {
+		return false
+	}
+	if item.AwarenessId.Valid && uint64(item.AwarenessId.Int64) == awareness.AwarenessId {
+		return false
+	}
+	return true
+}
+
+func refreshTodayTaskAwarenessSnapshot(item *model.DailyTasks, awareness *model.Awareness) *model.DailyTasks {
+	if item == nil || awareness == nil {
+		return item
+	}
+	cloned := *item
+	cloned.TopicId = 0
+	cloned.AwarenessId = sql.NullInt64{Int64: int64(awareness.AwarenessId), Valid: true}
+	cloned.TopicOrderNo = awareness.SortOrderGlobal
+	cloned.TopicTitle = awareness.PointTitle
+	cloned.TopicSummary = awarenessSummary(awareness)
+	cloned.UpdatedAt = time.Now()
+	return &cloned
+}
+
 func topicDescription(topic *model.Topics) string {
 	if topic == nil || !topic.Description.Valid {
 		return ""
