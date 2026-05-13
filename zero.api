@@ -34,6 +34,7 @@ type (
 		awarenessTheme string `json:"awarenessTheme,optional"`
 		referenceMin   string `json:"referenceMin,optional"`
 		referenceMax   string `json:"referenceMax,optional"`
+		progressNo     int64  `json:"progressNo,optional"`
 	}
 	DailyTaskInfo {
 		id               uint64 `json:"id"`
@@ -52,6 +53,7 @@ type (
 		referenceMax     string `json:"referenceMax,optional"`
 		betterDirection  string `json:"betterDirection,optional"`
 		isRestDay        bool   `json:"isRestDay"`
+		isPausedDay      bool   `json:"isPausedDay,optional"`
 		restTitle        string `json:"restTitle,optional"`
 		restDescription  string `json:"restDescription,optional"`
 		weakness         string `json:"weakness,optional"`
@@ -464,24 +466,31 @@ type (
 		password string `json:"password"`
 	}
 	AwarenessCycleUpdateReq {
-		startDate string `json:"startDate"`
-		restDays  int64  `json:"restDays,optional"`
+		startDate   string   `json:"startDate"`
+		restDays    int64    `json:"restDays,optional"`
+		pausedDates []string `json:"pausedDates,optional"`
 	}
 	AwarenessCycleDayInfo {
 		date        string `json:"date"`
 		title       string `json:"title"`
 		summary     string `json:"summary,optional"`
 		isRestDay   bool   `json:"isRestDay"`
+		isPausedDay bool   `json:"isPausedDay,optional"`
 		awarenessId uint64 `json:"awarenessId,optional"`
 		orderNo     int64  `json:"orderNo,optional"`
+		progressNo  int64  `json:"progressNo,optional"`
 	}
 	AwarenessCycleAdminInfo {
 		startDate              string                  `json:"startDate"`
 		restDays               int64                   `json:"restDays"`
+		pausedDates            []string                `json:"pausedDates,optional"`
 		eligibleAwarenessCount int64                   `json:"eligibleAwarenessCount"`
 		weekStart              string                  `json:"weekStart"`
 		normalDayCount         int64                   `json:"normalDayCount"`
 		restDayCount           int64                   `json:"restDayCount"`
+		pausedDayCount         int64                   `json:"pausedDayCount"`
+		currentProgressNo      int64                   `json:"currentProgressNo,optional"`
+		currentProgressTitle   string                  `json:"currentProgressTitle,optional"`
 		weekDays               []AwarenessCycleDayInfo `json:"weekDays"`
 	}
 	AwarenessCycleAdminResp {

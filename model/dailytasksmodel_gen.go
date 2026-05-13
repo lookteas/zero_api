@@ -40,7 +40,9 @@ type (
 	DailyTasks struct {
 		Id               uint64         `db:"id"`
 		UserId           uint64         `db:"user_id"`
+		CommunityId      uint64         `db:"community_id"`
 		TaskDate         time.Time      `db:"task_date"`
+		ScheduleDayId    sql.NullInt64  `db:"schedule_day_id"`
 		TopicId          uint64         `db:"topic_id"`
 		AwarenessId      sql.NullInt64  `db:"awareness_id"`
 		TopicOrderNo     int64          `db:"topic_order_no"`
@@ -99,14 +101,14 @@ func (m *defaultDailyTasksModel) FindOneByUserIdTaskDate(ctx context.Context, us
 }
 
 func (m *defaultDailyTasksModel) Insert(ctx context.Context, data *DailyTasks) (sql.Result, error) {
-	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table, dailyTasksRowsExpectAutoSet)
-	ret, err := m.conn.ExecCtx(ctx, query, data.UserId, data.TaskDate, data.TopicId, data.AwarenessId, data.TopicOrderNo, data.TopicTitle, data.TopicSummary, data.Weakness, data.ImprovementPlan, data.VerificationPath, data.ReflectionNote, data.Status, data.SubmittedAt)
+	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table, dailyTasksRowsExpectAutoSet)
+	ret, err := m.conn.ExecCtx(ctx, query, data.UserId, data.CommunityId, data.TaskDate, data.ScheduleDayId, data.TopicId, data.AwarenessId, data.TopicOrderNo, data.TopicTitle, data.TopicSummary, data.Weakness, data.ImprovementPlan, data.VerificationPath, data.ReflectionNote, data.Status, data.SubmittedAt)
 	return ret, err
 }
 
 func (m *defaultDailyTasksModel) Update(ctx context.Context, newData *DailyTasks) error {
 	query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, dailyTasksRowsWithPlaceHolder)
-	_, err := m.conn.ExecCtx(ctx, query, newData.UserId, newData.TaskDate, newData.TopicId, newData.AwarenessId, newData.TopicOrderNo, newData.TopicTitle, newData.TopicSummary, newData.Weakness, newData.ImprovementPlan, newData.VerificationPath, newData.ReflectionNote, newData.Status, newData.SubmittedAt, newData.Id)
+	_, err := m.conn.ExecCtx(ctx, query, newData.UserId, newData.CommunityId, newData.TaskDate, newData.ScheduleDayId, newData.TopicId, newData.AwarenessId, newData.TopicOrderNo, newData.TopicTitle, newData.TopicSummary, newData.Weakness, newData.ImprovementPlan, newData.VerificationPath, newData.ReflectionNote, newData.Status, newData.SubmittedAt, newData.Id)
 	return err
 }
 

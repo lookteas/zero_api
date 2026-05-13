@@ -25,6 +25,9 @@ type ServiceContext struct {
 	WeeklyTopicVoteRecordsModel    model.WeeklyTopicVoteRecordsModel
 	DiscussionInfosModel           model.DiscussionInfosModel
 	AwarenessModel                 model.AwarenessModel
+	AwarenessCyclesModel           model.AwarenessCyclesModel
+	AwarenessCyclePausesModel      model.AwarenessCyclePausesModel
+	AwarenessScheduleDaysModel     model.AwarenessScheduleDaysModel
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -41,6 +44,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	var weeklyTopicVoteRecordsModel model.WeeklyTopicVoteRecordsModel
 	var discussionInfosModel model.DiscussionInfosModel
 	var awarenessModel model.AwarenessModel
+	var awarenessCyclesModel model.AwarenessCyclesModel
+	var awarenessCyclePausesModel model.AwarenessCyclePausesModel
+	var awarenessScheduleDaysModel model.AwarenessScheduleDaysModel
 
 	if c.Mysql.DataSource != "" {
 		db = sqlx.NewMysql(c.Mysql.DataSource)
@@ -56,6 +62,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		weeklyTopicVoteRecordsModel = model.NewWeeklyTopicVoteRecordsModel(db)
 		discussionInfosModel = model.NewDiscussionInfosModel(db)
 		awarenessModel = model.NewAwarenessModel(db)
+		awarenessCyclesModel = model.NewAwarenessCyclesModel(db)
+		awarenessCyclePausesModel = model.NewAwarenessCyclePausesModel(db)
+		awarenessScheduleDaysModel = model.NewAwarenessScheduleDaysModel(db)
 	}
 
 	return &ServiceContext{
@@ -73,5 +82,8 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		WeeklyTopicVoteRecordsModel:    weeklyTopicVoteRecordsModel,
 		DiscussionInfosModel:           discussionInfosModel,
 		AwarenessModel:                 awarenessModel,
+		AwarenessCyclesModel:           awarenessCyclesModel,
+		AwarenessCyclePausesModel:      awarenessCyclePausesModel,
+		AwarenessScheduleDaysModel:     awarenessScheduleDaysModel,
 	}
 }

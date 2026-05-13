@@ -139,6 +139,38 @@ func refreshTodayTaskAwarenessSnapshot(item *model.DailyTasks, awareness *model.
 	return &cloned
 }
 
+func shouldRefreshTodayTaskScheduleDay(item *model.DailyTasks, scheduleDay *model.AwarenessScheduleDays) bool {
+	if item == nil || scheduleDay == nil || scheduleDay.DayType != scheduleDayNormal {
+		return false
+	}
+	if item.Status != "draft" {
+		return false
+	}
+	if item.ScheduleDayId.Valid && uint64(item.ScheduleDayId.Int64) == scheduleDay.ScheduleDayId {
+		return false
+	}
+	if item.AwarenessId.Valid && scheduleDay.AwarenessId.Valid && item.AwarenessId.Int64 == scheduleDay.AwarenessId.Int64 {
+		return false
+	}
+	return true
+}
+
+func refreshTodayTaskScheduleDaySnapshot(item *model.DailyTasks, scheduleDay *model.AwarenessScheduleDays) *model.DailyTasks {
+	if item == nil || scheduleDay == nil {
+		return item
+	}
+	cloned := *item
+	cloned.CommunityId = scheduleDay.CommunityId
+	cloned.ScheduleDayId = sql.NullInt64{Int64: int64(scheduleDay.ScheduleDayId), Valid: scheduleDay.ScheduleDayId > 0}
+	cloned.TopicId = 0
+	cloned.AwarenessId = sql.NullInt64{Int64: nullableInt64(scheduleDay.AwarenessId), Valid: scheduleDay.AwarenessId.Valid}
+	cloned.TopicOrderNo = nullableInt64(scheduleDay.CycleDayIndex)
+	cloned.TopicTitle = nullableString(scheduleDay.AwarenessTitle)
+	cloned.TopicSummary = nullableString(scheduleDay.AwarenessSummary)
+	cloned.UpdatedAt = time.Now()
+	return &cloned
+}
+
 func topicDescription(topic *model.Topics) string {
 	if topic == nil || !topic.Description.Valid {
 		return ""
@@ -203,6 +235,121 @@ func restDailyTaskInfo(taskDate time.Time) types.DailyTaskInfo {
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
+}
+
+func pausedDailyTaskInfo(taskDate time.Time, reason string) types.DailyTaskInfo {
+	title := "今日暂停打卡"
+	description := "今天暂停生成新的练习任务，暂停结束后会继续原来的意识点，不会跳过进度。到期复盘仍然可以照常完成。"
+	if reason != "" {
+		title = "今日暂停打卡：" + reason
+	}
+	now := time.Now().Format("2006-01-02 15:04:05")
+	return types.DailyTaskInfo{
+		TaskDate:        normalizeDate(taskDate).Format("2006-01-02"),
+		IsRestDay:       true,
+		IsPausedDay:     true,
+		RestTitle:       title,
+		RestDescription: description,
+		Status:          "paused",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+}
+
+func scheduleDayToDailyTaskInfo(item *model.AwarenessScheduleDays) types.DailyTaskInfo {
+	if item == nil {
+		return types.DailyTaskInfo{}
+	}
+	switch item.DayType {
+	case scheduleDayPaused:
+		return pausedDailyTaskInfo(item.ScheduleDate, nullableString(item.PauseReason))
+	case scheduleDayRest:
+		return restDailyTaskInfo(item.ScheduleDate)
+	}
+
+	info := types.DailyTaskInfo{
+		TaskDate:         item.ScheduleDate.Format("2006-01-02"),
+		TopicId:          0,
+		TopicOrderNo:     nullableInt64(item.CycleDayIndex),
+		TopicTitle:       nullableString(item.AwarenessTitle),
+		TopicSummary:     nullableString(item.AwarenessSummary),
+		AwarenessId:      uint64(nullableInt64(item.AwarenessId)),
+		AwarenessTitle:   nullableString(item.AwarenessTitle),
+		AwarenessTheme:   nullableString(item.AwarenessTheme),
+		AwarenessSummary: nullableString(item.AwarenessSummary),
+		AwarenessDetails: nullableString(item.AwarenessDetails),
+		ReferenceMin:     nullDecimalString(item.ReferenceMin),
+		ReferenceMax:     nullDecimalString(item.ReferenceMax),
+		BetterDirection:  nullableString(item.BetterDirection),
+		Status:           "draft",
+		CanEditContent:   true,
+		CreatedAt:        item.UpdatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt:        item.UpdatedAt.Format("2006-01-02 15:04:05"),
+	}
+	return info
+}
+
+func applyScheduleDayAwarenessToDailyTaskInfo(info types.DailyTaskInfo, item *model.AwarenessScheduleDays) types.DailyTaskInfo {
+	if item == nil || item.DayType != scheduleDayNormal {
+		return info
+	}
+	info.AwarenessId = uint64(nullableInt64(item.AwarenessId))
+	info.AwarenessTitle = nullableString(item.AwarenessTitle)
+	info.AwarenessTheme = nullableString(item.AwarenessTheme)
+	info.AwarenessSummary = nullableString(item.AwarenessSummary)
+	info.AwarenessDetails = nullableString(item.AwarenessDetails)
+	info.ReferenceMin = nullDecimalString(item.ReferenceMin)
+	info.ReferenceMax = nullDecimalString(item.ReferenceMax)
+	info.BetterDirection = nullableString(item.BetterDirection)
+	return info
+}
+
+func scheduleDayToTopicInfo(item *model.AwarenessScheduleDays) types.TopicInfo {
+	if item == nil {
+		return types.TopicInfo{}
+	}
+	if item.DayType == scheduleDayPaused {
+		return types.TopicInfo{
+			Id:           0,
+			Title:        "暂停打卡",
+			Summary:      "今天暂停生成新的练习任务，暂停结束后继续原来的意识点。",
+			OrderNo:      0,
+			Status:       1,
+			ScheduleDate: item.ScheduleDate.Format("2006-01-02"),
+			IsRestDay:    true,
+		}
+	}
+	if item.DayType == scheduleDayRest {
+		return restTopicInfo(item.ScheduleDate)
+	}
+	return types.TopicInfo{
+		Id:             uint64(nullableInt64(item.AwarenessId)),
+		Title:          nullableString(item.AwarenessTitle),
+		Summary:        nullableString(item.AwarenessSummary),
+		Description:    nullableString(item.AwarenessDetails),
+		OrderNo:        nullableInt64(item.CycleDayIndex),
+		Status:         1,
+		ScheduleDate:   item.ScheduleDate.Format("2006-01-02"),
+		AwarenessId:    uint64(nullableInt64(item.AwarenessId)),
+		AwarenessTheme: nullableString(item.AwarenessTheme),
+		ReferenceMin:   nullDecimalString(item.ReferenceMin),
+		ReferenceMax:   nullDecimalString(item.ReferenceMax),
+		ProgressNo:     nullableInt64(item.EffectiveDayIndex) + 1,
+	}
+}
+
+func nullableString(value sql.NullString) string {
+	if !value.Valid {
+		return ""
+	}
+	return value.String
+}
+
+func nullableInt64(value sql.NullInt64) int64 {
+	if !value.Valid {
+		return 0
+	}
+	return value.Int64
 }
 
 func dailyTaskToInfo(item *model.DailyTasks) types.DailyTaskInfo {

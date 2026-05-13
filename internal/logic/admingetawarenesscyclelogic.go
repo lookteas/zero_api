@@ -46,9 +46,13 @@ func (l *AdminGetAwarenessCycleLogic) AdminGetAwarenessCycle() (resp *types.Awar
 	if err != nil {
 		return nil, err
 	}
+	var pauses []model.AwarenessCyclePauses
+	if cycle, cycleErr := getActiveAwarenessCycle(l.ctx, l.svcCtx); cycleErr == nil && l.svcCtx.AwarenessCyclePausesModel != nil {
+		pauses, _ = l.svcCtx.AwarenessCyclePausesModel.FindActiveByCycle(l.ctx, cycle.CycleId)
+	}
 
 	weekStart := currentWeekStart(time.Now())
-	data := buildAwarenessCycleAdminInfo(startDate, restDays, weekStart, points)
+	data := buildAwarenessCycleAdminInfo(startDate, restDays, weekStart, points, pauses)
 	return &types.AwarenessCycleAdminResp{
 		Code:    0,
 		Message: "ok",
@@ -56,14 +60,30 @@ func (l *AdminGetAwarenessCycleLogic) AdminGetAwarenessCycle() (resp *types.Awar
 	}, nil
 }
 
-func buildAwarenessCycleAdminInfo(startDate time.Time, restDays int, weekStart time.Time, points []model.Awareness) types.AwarenessCycleAdminInfo {
+func buildAwarenessCycleAdminInfo(startDate time.Time, restDays int, weekStart time.Time, points []model.Awareness, pauses []model.AwarenessCyclePauses) types.AwarenessCycleAdminInfo {
 	weekDays := make([]types.AwarenessCycleDayInfo, 0, 7)
 	var normalDayCount int64
 	var restDayCount int64
-	for i := 0; i < 7; i++ {
-		date := normalizeDate(weekStart).AddDate(0, 0, i)
-		cycle := resolveAwarenessCycleDay(startDate, date, restDays, points)
-		if cycle.Awareness == nil || cycle.IsRestDay || cycle.IsPreStart {
+	var pausedDayCount int64
+	var currentProgressNo int64
+	var currentProgressTitle string
+	today := normalizeDate(time.Now())
+	cycle := &model.AwarenessCycles{CycleId: 1, CommunityId: defaultCommunityID, StartDate: startDate, RestDays: int64(restDays)}
+	plans := buildAwarenessSchedulePlan(cycle, points, pauses, weekStart, normalizeDate(weekStart).AddDate(0, 0, 6))
+	for _, plan := range plans {
+		date := normalizeDate(plan.Date)
+		if plan.DayType == scheduleDayPaused {
+			pausedDayCount++
+			weekDays = append(weekDays, types.AwarenessCycleDayInfo{
+				Date:        date.Format("2006-01-02"),
+				Title:       "暂停打卡",
+				Summary:     nullableString(plan.Pause.Reason),
+				IsRestDay:   true,
+				IsPausedDay: true,
+			})
+			continue
+		}
+		if plan.DayType != scheduleDayNormal || plan.Awareness == nil {
 			restDayCount++
 			weekDays = append(weekDays, types.AwarenessCycleDayInfo{
 				Date:      date.Format("2006-01-02"),
@@ -75,13 +95,19 @@ func buildAwarenessCycleAdminInfo(startDate time.Time, restDays int, weekStart t
 		}
 
 		normalDayCount++
+		progressNo := plan.EffectiveDayIndex.Int64 + 1
+		if normalizeDate(plan.Date).Equal(today) {
+			currentProgressNo = progressNo
+			currentProgressTitle = plan.Awareness.PointTitle
+		}
 		day := types.AwarenessCycleDayInfo{
 			Date:        date.Format("2006-01-02"),
-			Title:       cycle.Awareness.PointTitle,
-			Summary:     awarenessSummary(cycle.Awareness),
+			Title:       plan.Awareness.PointTitle,
+			Summary:     awarenessSummary(plan.Awareness),
 			IsRestDay:   false,
-			AwarenessId: cycle.Awareness.AwarenessId,
-			OrderNo:     cycle.Awareness.SortOrderGlobal,
+			AwarenessId: plan.Awareness.AwarenessId,
+			OrderNo:     plan.Awareness.SortOrderGlobal,
+			ProgressNo:  progressNo,
 		}
 		weekDays = append(weekDays, day)
 	}
@@ -89,10 +115,24 @@ func buildAwarenessCycleAdminInfo(startDate time.Time, restDays int, weekStart t
 	return types.AwarenessCycleAdminInfo{
 		StartDate:              normalizeDate(startDate).Format("2006-01-02"),
 		RestDays:               int64(restDays),
+		PausedDates:            pausesToDateStrings(pauses),
 		EligibleAwarenessCount: int64(len(points)),
 		WeekStart:              normalizeDate(weekStart).Format("2006-01-02"),
 		NormalDayCount:         normalDayCount,
 		RestDayCount:           restDayCount,
+		PausedDayCount:         pausedDayCount,
+		CurrentProgressNo:      currentProgressNo,
+		CurrentProgressTitle:   currentProgressTitle,
 		WeekDays:               weekDays,
 	}
+}
+
+func pausesToDateStrings(pauses []model.AwarenessCyclePauses) []string {
+	result := make([]string, 0)
+	for _, pause := range pauses {
+		for date := normalizeDate(pause.PauseStartDate); !date.After(normalizeDate(pause.PauseEndDate)); date = date.AddDate(0, 0, 1) {
+			result = append(result, date.Format("2006-01-02"))
+		}
+	}
+	return result
 }

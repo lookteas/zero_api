@@ -9,8 +9,9 @@ type AdminLoginReq struct {
 }
 
 type AwarenessCycleUpdateReq struct {
-	StartDate string `json:"startDate"`
-	RestDays  int64  `json:"restDays,optional"`
+	StartDate   string   `json:"startDate"`
+	RestDays    int64    `json:"restDays,optional"`
+	PausedDates []string `json:"pausedDates,optional"`
 }
 
 type AwarenessCycleDayInfo struct {
@@ -18,17 +19,23 @@ type AwarenessCycleDayInfo struct {
 	Title       string `json:"title"`
 	Summary     string `json:"summary,optional"`
 	IsRestDay   bool   `json:"isRestDay"`
+	IsPausedDay bool   `json:"isPausedDay,optional"`
 	AwarenessId uint64 `json:"awarenessId,optional"`
 	OrderNo     int64  `json:"orderNo,optional"`
+	ProgressNo  int64  `json:"progressNo,optional"`
 }
 
 type AwarenessCycleAdminInfo struct {
 	StartDate              string                  `json:"startDate"`
 	RestDays               int64                   `json:"restDays"`
+	PausedDates            []string                `json:"pausedDates,optional"`
 	EligibleAwarenessCount int64                   `json:"eligibleAwarenessCount"`
 	WeekStart              string                  `json:"weekStart"`
 	NormalDayCount         int64                   `json:"normalDayCount"`
 	RestDayCount           int64                   `json:"restDayCount"`
+	PausedDayCount         int64                   `json:"pausedDayCount"`
+	CurrentProgressNo      int64                   `json:"currentProgressNo,optional"`
+	CurrentProgressTitle   string                  `json:"currentProgressTitle,optional"`
 	WeekDays               []AwarenessCycleDayInfo `json:"weekDays"`
 }
 
@@ -119,6 +126,7 @@ type DailyTaskInfo struct {
 	ReferenceMax        string `json:"referenceMax,optional"`
 	BetterDirection     string `json:"betterDirection,optional"`
 	IsRestDay           bool   `json:"isRestDay"`
+	IsPausedDay         bool   `json:"isPausedDay,optional"`
 	RestTitle           string `json:"restTitle,optional"`
 	RestDescription     string `json:"restDescription,optional"`
 	Weakness            string `json:"weakness,optional"`
@@ -450,6 +458,7 @@ type TopicInfo struct {
 	AwarenessTheme string `json:"awarenessTheme,optional"`
 	ReferenceMin   string `json:"referenceMin,optional"`
 	ReferenceMax   string `json:"referenceMax,optional"`
+	ProgressNo     int64  `json:"progressNo,optional"`
 }
 
 type TopicListData struct {

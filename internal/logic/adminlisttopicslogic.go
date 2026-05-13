@@ -77,6 +77,25 @@ func (l *AdminListTopicsLogic) adminListAwarenessSchedule(req *types.TopicQueryR
 		return nil, fmt.Errorf("invalid weekStart: %w", err)
 	}
 
+	if l.svcCtx.AwarenessScheduleDaysModel != nil {
+		endDate := normalizeDate(weekStart).AddDate(0, 0, 6)
+		items, scheduleErr := l.svcCtx.AwarenessScheduleDaysModel.FindByCommunityDateRange(l.ctx, defaultCommunityID, weekStart, endDate)
+		if scheduleErr == nil && len(items) == 7 {
+			list := make([]types.TopicInfo, 0, len(items))
+			for i := range items {
+				list = append(list, scheduleDayToTopicInfo(&items[i]))
+			}
+			return &types.TopicListResp{
+				Code:    0,
+				Message: "ok",
+				Data: types.TopicListData{
+					List:       list,
+					Pagination: types.Pagination{Page: 1, PageSize: int64(len(list)), Total: int64(len(list))},
+				},
+			}, nil
+		}
+	}
+
 	var points []model.Awareness
 	if l.svcCtx.AwarenessModel != nil {
 		points, err = l.svcCtx.AwarenessModel.FindEligible(l.ctx)

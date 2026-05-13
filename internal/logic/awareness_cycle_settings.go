@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,8 +15,9 @@ import (
 )
 
 const (
-	awarenessCycleStartDateKey = "awareness_cycle_start_date"
-	awarenessCycleRestDaysKey  = "awareness_cycle_rest_days"
+	awarenessCycleStartDateKey   = "awareness_cycle_start_date"
+	awarenessCycleRestDaysKey    = "awareness_cycle_rest_days"
+	awarenessCyclePausedDatesKey = "awareness_cycle_paused_dates"
 )
 
 func getAwarenessCycleSettings(ctx context.Context, svcCtx *svc.ServiceContext) (time.Time, int, error) {
@@ -99,6 +101,19 @@ func getAppSetting(ctx context.Context, svcCtx *svc.ServiceContext, key string) 
 	}
 
 	return value, nil
+}
+
+func updateAwarenessCyclePausedDatesSetting(ctx context.Context, svcCtx *svc.ServiceContext, pausedDates []string) error {
+	if svcCtx.DB == nil {
+		return nil
+	}
+	encoded, err := json.Marshal(pausedDates)
+	if err != nil {
+		return err
+	}
+	query := "insert into app_settings (setting_key, setting_value) values (?, ?) on duplicate key update setting_value = values(setting_value)"
+	_, err = svcCtx.DB.ExecCtx(ctx, query, awarenessCyclePausedDatesKey, string(encoded))
+	return err
 }
 
 func isMySQLTableMissing(err error) bool {
