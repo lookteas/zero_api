@@ -56,7 +56,7 @@ func (l *ListDailyTasksLogic) ListDailyTasks(req *types.DailyTaskQueryReq) (resp
 }
 
 func buildDailyTaskListQuery(userID uint64, req *types.DailyTaskQueryReq) (string, []any) {
-	query := "select id, user_id, task_date, topic_id, awareness_id, topic_order_no, topic_title, topic_summary, weakness, improvement_plan, verification_path, reflection_note, status, submitted_at, created_at, updated_at from daily_tasks where user_id = ?"
+	query := "select id, user_id, community_id, task_date, schedule_day_id, topic_id, awareness_id, topic_order_no, topic_title, topic_summary, weakness, improvement_plan, verification_path, reflection_note, status, submitted_at, created_at, updated_at from daily_tasks where user_id = ?"
 	args := []any{userID}
 
 	if req.Status != "" {
