@@ -55,6 +55,10 @@ func (l *ListDailyTasksLogic) ListDailyTasks(req *types.DailyTaskQueryReq) (resp
 	if req.EndDate != "" {
 		endDate, _ = time.Parse("2006-01-02", req.EndDate)
 	}
+	scheduleDaysByDate, err := l.loadScheduleDaysByDate(startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
 
 	// 构建已有任务的日期映射
 	existingDates := make(map[string]bool)
@@ -63,6 +67,9 @@ func (l *ListDailyTasksLogic) ListDailyTasks(req *types.DailyTaskQueryReq) (resp
 	for i := range items {
 		taskDateStr := items[i].TaskDate.Format("2006-01-02")
 		existingDates[taskDateStr] = true
+		if scheduleDay, ok := scheduleDaysByDate[taskDateStr]; ok && scheduleDay.DayType == scheduleDayPaused {
+			continue
+		}
 		list = append(list, dailyTaskToInfo(&items[i]))
 	}
 
@@ -72,7 +79,7 @@ func (l *ListDailyTasksLogic) ListDailyTasks(req *types.DailyTaskQueryReq) (resp
 		l.Logger.Info("skipping auto-fill for missing dates: no valid date range")
 	} else {
 		// 尝试为缺失的日期生成任务
-		l.fillMissingDates(startDate, endDate, existingDates, &list)
+		l.fillMissingDatesWithSchedule(startDate, endDate, existingDates, &list, scheduleDaysByDate)
 	}
 
 	// 按taskDate降序排序（最新的在前）
@@ -88,9 +95,38 @@ func (l *ListDailyTasksLogic) ListDailyTasks(req *types.DailyTaskQueryReq) (resp
 	}, nil
 }
 
+func (l *ListDailyTasksLogic) loadScheduleDaysByDate(startDate, endDate time.Time) (map[string]model.AwarenessScheduleDays, error) {
+	result := map[string]model.AwarenessScheduleDays{}
+	if l.svcCtx.AwarenessScheduleDaysModel == nil || startDate.IsZero() || endDate.IsZero() || startDate.After(endDate) {
+		return result, nil
+	}
+
+	items, err := l.svcCtx.AwarenessScheduleDaysModel.FindByCommunityDateRange(l.ctx, defaultCommunityID, startDate, endDate)
+	if err != nil {
+		return nil, fmt.Errorf("query awareness schedule days: %w", err)
+	}
+
+	for i := range items {
+		result[items[i].ScheduleDate.Format("2006-01-02")] = items[i]
+	}
+	return result, nil
+}
+
 // fillMissingDates 为指定日期范围内缺失的日期自动生成任务记录（支持补卡）
 func (l *ListDailyTasksLogic) fillMissingDates(startDate, endDate time.Time, existingDates map[string]bool, list *[]types.DailyTaskInfo) {
+	scheduleDaysByDate, err := l.loadScheduleDaysByDate(startDate, endDate)
+	if err != nil {
+		l.Logger.Infof("skipping auto-fill: failed to find schedule days: %v", err)
+		return
+	}
+	l.fillMissingDatesWithSchedule(startDate, endDate, existingDates, list, scheduleDaysByDate)
+}
+
+func (l *ListDailyTasksLogic) fillMissingDatesWithSchedule(startDate, endDate time.Time, existingDates map[string]bool, list *[]types.DailyTaskInfo, scheduleDaysByDate map[string]model.AwarenessScheduleDays) {
 	if l.svcCtx.DailyTasksModel == nil || l.svcCtx.AwarenessModel == nil {
+		if len(scheduleDaysByDate) > 0 {
+			l.fillMissingScheduleDays(startDate, endDate, existingDates, list, scheduleDaysByDate)
+		}
 		return
 	}
 
@@ -114,7 +150,7 @@ func (l *ListDailyTasksLogic) fillMissingDates(startDate, endDate time.Time, exi
 	totalPoints := len(points)
 	if totalPoints == 0 {
 		// 没有可用意识点时，只生成占位符任务
-		l.generatePlaceholderTasks(startDate, endDate, existingDates, userID, list)
+		l.generatePlaceholderTasks(startDate, endDate, existingDates, userID, list, scheduleDaysByDate)
 		return
 	}
 
@@ -126,6 +162,10 @@ func (l *ListDailyTasksLogic) fillMissingDates(startDate, endDate time.Time, exi
 
 		// 检查日期是否已有任务记录
 		if existingDates[dateStr] {
+			continue
+		}
+		if scheduleDay, ok := scheduleDaysByDate[dateStr]; ok {
+			l.fillMissingScheduleDay(scheduleDay, existingDates, list)
 			continue
 		}
 
@@ -158,13 +198,13 @@ func (l *ListDailyTasksLogic) fillMissingDates(startDate, endDate time.Time, exi
 			CommunityId:  defaultCommunityID,
 			TaskDate:     date,
 			TopicId:      0,
-			AwarenessId: sql.NullInt64{Int64: int64(awareness.AwarenessId), Valid: true},
+			AwarenessId:  sql.NullInt64{Int64: int64(awareness.AwarenessId), Valid: true},
 			TopicOrderNo: awareness.SortOrderGlobal,
 			TopicTitle:   awareness.PointTitle,
 			TopicSummary: awarenessSummary(awareness),
 			Status:       "draft", // 草稿状态，表示这是补卡任务
-			CreatedAt:   now,
-			UpdatedAt:   now,
+			CreatedAt:    now,
+			UpdatedAt:    now,
 		}
 
 		insertResult, insertErr := l.svcCtx.DailyTasksModel.Insert(l.ctx, dbItem)
@@ -186,33 +226,92 @@ func (l *ListDailyTasksLogic) fillMissingDates(startDate, endDate time.Time, exi
 			TopicId:             0,
 			TopicOrderNo:        awareness.SortOrderGlobal,
 			TopicTitle:          awareness.PointTitle,
-			TopicSummary:       awarenessSummary(&points[dayInCycle]),
-			TopicDescription:   "",
+			TopicSummary:        awarenessSummary(&points[dayInCycle]),
+			TopicDescription:    "",
 			Weakness:            "",
-			ImprovementPlan:    "",
-			VerificationPath:   "",
-			ReflectionNote:    "",
-			Status:             "draft",
-			CanEditContent:     true, // 补卡任务在72小时内可以编辑
+			ImprovementPlan:     "",
+			VerificationPath:    "",
+			ReflectionNote:      "",
+			Status:              "draft",
+			CanEditContent:      true, // 补卡任务在72小时内可以编辑
 			CanAppendReflection: false,
-			SubmittedAt:        "",
+			SubmittedAt:         "",
 			CreatedAt:           now.Format("2006-01-02 15:04:05"),
-			UpdatedAt:          now.Format("2006-01-02 15:04:05"),
+			UpdatedAt:           now.Format("2006-01-02 15:04:05"),
 		}
 		*list = append(*list, taskInfo)
 		existingDates[dateStr] = true
 	}
 }
 
+func (l *ListDailyTasksLogic) fillMissingScheduleDays(startDate, endDate time.Time, existingDates map[string]bool, list *[]types.DailyTaskInfo, scheduleDaysByDate map[string]model.AwarenessScheduleDays) {
+	for date := startDate; !date.After(endDate); date = date.AddDate(0, 0, 1) {
+		dateStr := date.Format("2006-01-02")
+		if existingDates[dateStr] {
+			continue
+		}
+		if scheduleDay, ok := scheduleDaysByDate[dateStr]; ok {
+			l.fillMissingScheduleDay(scheduleDay, existingDates, list)
+		}
+	}
+}
+
+func (l *ListDailyTasksLogic) fillMissingScheduleDay(scheduleDay model.AwarenessScheduleDays, existingDates map[string]bool, list *[]types.DailyTaskInfo) {
+	dateStr := scheduleDay.ScheduleDate.Format("2006-01-02")
+	existingDates[dateStr] = true
+	if scheduleDay.DayType == scheduleDayPaused || scheduleDay.DayType == scheduleDayRest {
+		return
+	}
+
+	now := time.Now()
+	dbItem := &model.DailyTasks{
+		UserId:        currentUserID(l.ctx),
+		CommunityId:   scheduleDay.CommunityId,
+		TaskDate:      scheduleDay.ScheduleDate,
+		ScheduleDayId: sql.NullInt64{Int64: int64(scheduleDay.ScheduleDayId), Valid: scheduleDay.ScheduleDayId > 0},
+		TopicId:       0,
+		AwarenessId:   sql.NullInt64{Int64: nullableInt64(scheduleDay.AwarenessId), Valid: scheduleDay.AwarenessId.Valid},
+		TopicOrderNo:  nullableInt64(scheduleDay.CycleDayIndex),
+		TopicTitle:    nullableString(scheduleDay.AwarenessTitle),
+		TopicSummary:  nullableString(scheduleDay.AwarenessSummary),
+		Status:        "draft",
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	if dbItem.CommunityId == 0 {
+		dbItem.CommunityId = defaultCommunityID
+	}
+
+	insertResult, insertErr := l.svcCtx.DailyTasksModel.Insert(l.ctx, dbItem)
+	if insertErr != nil {
+		l.Logger.Infof("failed to create missed schedule task for %s: %v, adding in-memory entry", dateStr, insertErr)
+		info := scheduleDayToDailyTaskInfo(&scheduleDay)
+		*list = append(*list, info)
+		return
+	}
+
+	newID, _ := insertResult.LastInsertId()
+	info := scheduleDayToDailyTaskInfo(&scheduleDay)
+	info.Id = uint64(newID)
+	info.CreatedAt = now.Format("2006-01-02 15:04:05")
+	info.UpdatedAt = now.Format("2006-01-02 15:04:05")
+	*list = append(*list, info)
+}
+
 // generatePlaceholderTasks 为日期范围内没有可用意识点时生成占位符任务
-func (l *ListDailyTasksLogic) generatePlaceholderTasks(startDate, endDate time.Time, existingDates map[string]bool, userID uint64, list *[]types.DailyTaskInfo) {
+func (l *ListDailyTasksLogic) generatePlaceholderTasks(startDate, endDate time.Time, existingDates map[string]bool, userID uint64, list *[]types.DailyTaskInfo, scheduleDaysByDate map[string]model.AwarenessScheduleDays) {
 	now := time.Now()
 	for date := startDate; !date.After(endDate); date = date.AddDate(0, 0, 1) {
 		dateStr := date.Format("2006-01-02")
-		if !existingDates[dateStr] {
-			newItem := createMissedTaskInfo(date, "pause", "", "", "休息日", now)
-			*list = append(*list, newItem)
+		if existingDates[dateStr] {
+			continue
 		}
+		if scheduleDay, ok := scheduleDaysByDate[dateStr]; ok {
+			l.fillMissingScheduleDay(scheduleDay, existingDates, list)
+			continue
+		}
+		newItem := createMissedTaskInfo(date, "pause", "", "", "休息日", now)
+		*list = append(*list, newItem)
 	}
 }
 
@@ -228,15 +327,15 @@ func createMissedTaskInfo(taskDate time.Time, status, title, summary, desc strin
 		TopicSummary:        summary,
 		TopicDescription:    "",
 		Weakness:            "",
-		ImprovementPlan:    "",
-		VerificationPath:   "",
-		ReflectionNote:    "",
-		Status:             status,
-		CanEditContent:     status == "draft",
+		ImprovementPlan:     "",
+		VerificationPath:    "",
+		ReflectionNote:      "",
+		Status:              status,
+		CanEditContent:      status == "draft",
 		CanAppendReflection: false,
-		SubmittedAt:        "",
+		SubmittedAt:         "",
 		CreatedAt:           now.Format("2006-01-02 15:04:05"),
-		UpdatedAt:          now.Format("2006-01-02 15:04:05"),
+		UpdatedAt:           now.Format("2006-01-02 15:04:05"),
 	}
 	return info
 }
