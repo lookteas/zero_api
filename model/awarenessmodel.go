@@ -21,6 +21,8 @@ var _ AwarenessModel = (*customAwarenessModel)(nil)
 type (
 	AwarenessModel interface {
 		FindEligible(ctx context.Context) ([]Awareness, error)
+		UpdateContent(ctx context.Context, id uint64, title, summary, details string) error
+		Disable(ctx context.Context, id uint64) error
 		withSession(session sqlx.Session) AwarenessModel
 	}
 
@@ -73,6 +75,25 @@ func (m *customAwarenessModel) FindEligible(ctx context.Context) ([]Awareness, e
 	return resp, err
 }
 
+func (m *customAwarenessModel) UpdateContent(ctx context.Context, id uint64, title, summary, details string) error {
+	query := fmt.Sprintf("update %s set `point_title` = ?, `summary` = ?, `details` = ? where `awareness_id` = ?", m.table)
+	_, err := m.conn.ExecCtx(ctx, query, title, nullAwarenessString(summary), nullAwarenessString(details), id)
+	return err
+}
+
+func (m *customAwarenessModel) Disable(ctx context.Context, id uint64) error {
+	query := fmt.Sprintf("update %s set `status` = 0 where `awareness_id` = ?", m.table)
+	_, err := m.conn.ExecCtx(ctx, query, id)
+	return err
+}
+
 func (m *customAwarenessModel) withSession(session sqlx.Session) AwarenessModel {
 	return NewAwarenessModel(sqlx.NewSqlConnFromSession(session))
+}
+
+func nullAwarenessString(value string) sql.NullString {
+	if value == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: value, Valid: true}
 }

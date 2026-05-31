@@ -14,6 +14,19 @@ type AwarenessCycleUpdateReq struct {
 	PausedDates []string `json:"pausedDates,optional"`
 }
 
+type AdminAwarenessUpdateReq struct {
+	Id            uint64 `path:"id"`
+	Title         string `json:"title"`
+	Summary       string `json:"summary,optional"`
+	Description   string `json:"description,optional"`
+	EffectiveDate string `json:"effectiveDate,optional"`
+}
+
+type AdminAwarenessExcludeReq struct {
+	Id            uint64 `path:"id"`
+	EffectiveDate string `json:"effectiveDate,optional"`
+}
+
 type AwarenessCycleDayInfo struct {
 	Date        string `json:"date"`
 	Title       string `json:"title"`

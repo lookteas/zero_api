@@ -470,6 +470,17 @@ type (
 		restDays    int64    `json:"restDays,optional"`
 		pausedDates []string `json:"pausedDates,optional"`
 	}
+	AdminAwarenessUpdateReq {
+		id            uint64 `path:"id"`
+		title         string `json:"title"`
+		summary       string `json:"summary,optional"`
+		description   string `json:"description,optional"`
+		effectiveDate string `json:"effectiveDate,optional"`
+	}
+	AdminAwarenessExcludeReq {
+		id            uint64 `path:"id"`
+		effectiveDate string `json:"effectiveDate,optional"`
+	}
 	AwarenessCycleDayInfo {
 		date        string `json:"date"`
 		title       string `json:"title"`
@@ -603,6 +614,12 @@ service zero-api {
 
 	@handler AdminUpdateAwarenessCycle
 	patch /admin/awareness-cycle (AwarenessCycleUpdateReq) returns (SimpleResp)
+
+	@handler AdminUpdateAwareness
+	patch /admin/awareness/:id (AdminAwarenessUpdateReq) returns (SimpleResp)
+
+	@handler AdminExcludeAwareness
+	post /admin/awareness/:id/exclude (AdminAwarenessExcludeReq) returns (SimpleResp)
 
 	@handler AdminListTopics
 	get /admin/topics (TopicQueryReq) returns (TopicListResp)
