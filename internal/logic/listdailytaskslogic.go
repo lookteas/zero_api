@@ -70,7 +70,11 @@ func (l *ListDailyTasksLogic) ListDailyTasks(req *types.DailyTaskQueryReq) (resp
 		if scheduleDay, ok := scheduleDaysByDate[taskDateStr]; ok && scheduleDay.DayType == scheduleDayPaused {
 			continue
 		}
-		list = append(list, dailyTaskToInfo(&items[i]))
+		info := dailyTaskToInfo(&items[i])
+		if scheduleDay, ok := scheduleDaysByDate[taskDateStr]; ok {
+			info = applyScheduleDayAwarenessToDailyTaskInfo(info, &scheduleDay)
+		}
+		list = append(list, info)
 	}
 
 	// 处理有缺失日期的情况 - 为遗漏的日期填补任务

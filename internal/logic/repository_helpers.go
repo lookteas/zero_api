@@ -293,6 +293,11 @@ func applyScheduleDayAwarenessToDailyTaskInfo(info types.DailyTaskInfo, item *mo
 	if item == nil || item.DayType != scheduleDayNormal {
 		return info
 	}
+	info.TopicId = 0
+	info.TopicOrderNo = nullableInt64(item.CycleDayIndex)
+	info.TopicTitle = nullableString(item.AwarenessTitle)
+	info.TopicSummary = nullableString(item.AwarenessSummary)
+	info.TopicDescription = nullableString(item.AwarenessDetails)
 	info.AwarenessId = uint64(nullableInt64(item.AwarenessId))
 	info.AwarenessTitle = nullableString(item.AwarenessTitle)
 	info.AwarenessTheme = nullableString(item.AwarenessTheme)

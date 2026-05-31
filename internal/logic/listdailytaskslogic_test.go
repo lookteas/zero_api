@@ -208,3 +208,49 @@ func TestListDailyTasksFiltersExistingTasksOnPausedScheduleDays(t *testing.T) {
 		t.Fatalf("expected next normal task only, got %+v", resp.Data.List[0])
 	}
 }
+
+func TestListDailyTasksUsesScheduleSnapshotForExistingHistoryTask(t *testing.T) {
+	t.Parallel()
+
+	taskDate := time.Date(2026, 5, 12, 0, 0, 0, 0, time.Local)
+	logic := NewListDailyTasksLogic(WithCurrentUserID(context.Background(), 7), &svc.ServiceContext{
+		DB: &listDailyTasksDB{items: []model.DailyTasks{
+			{
+				Id:           2,
+				UserId:       7,
+				TaskDate:     taskDate,
+				AwarenessId:  sql.NullInt64{Int64: 101, Valid: true},
+				TopicTitle:   "旧排期主题",
+				TopicSummary: "旧摘要",
+				Status:       "draft",
+				CreatedAt:    taskDate,
+				UpdatedAt:    taskDate,
+			},
+		}},
+		DailyTasksModel: &listDailyTasksModel{},
+		AwarenessScheduleDaysModel: &listAwarenessScheduleDaysModel{items: []model.AwarenessScheduleDays{
+			{
+				ScheduleDayId:     42,
+				ScheduleDate:      taskDate,
+				DayType:           scheduleDayNormal,
+				AwarenessId:       sql.NullInt64{Int64: 202, Valid: true},
+				AwarenessTitle:    sql.NullString{String: "新排期主题", Valid: true},
+				AwarenessSummary:  sql.NullString{String: "新摘要", Valid: true},
+				CycleDayIndex:     sql.NullInt64{Int64: 9, Valid: true},
+				EffectiveDayIndex: sql.NullInt64{Int64: 19, Valid: true},
+			},
+		}},
+	})
+
+	resp, err := logic.ListDailyTasks(&types.DailyTaskQueryReq{StartDate: "2026-05-12", EndDate: "2026-05-12"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.Data.List) != 1 {
+		t.Fatalf("expected one history task, got %+v", resp.Data.List)
+	}
+	got := resp.Data.List[0]
+	if got.TopicTitle != "新排期主题" || got.TopicSummary != "新摘要" || got.AwarenessId != 202 || got.TopicOrderNo != 9 {
+		t.Fatalf("expected history task to use schedule snapshot, got %+v", got)
+	}
+}
