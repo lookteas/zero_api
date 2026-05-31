@@ -3,6 +3,8 @@ package logic
 import (
 	"context"
 	"database/sql"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,12 +17,16 @@ import (
 
 type adminAwarenessMaintenanceModel struct {
 	model.AwarenessModel
-	points         []model.Awareness
-	updatedID      uint64
-	updatedTitle   string
-	updatedSummary string
-	updatedDetails string
-	disabledID     uint64
+	points            []model.Awareness
+	updatedID         uint64
+	updatedTitle      string
+	updatedSummary    string
+	updatedDetails    string
+	disabledID        uint64
+	created           *model.Awareness
+	reorderedID       uint64
+	reorderedPosition int64
+	nextID            uint64
 }
 
 func (m *adminAwarenessMaintenanceModel) FindEligible(context.Context) ([]model.Awareness, error) {
@@ -30,7 +36,85 @@ func (m *adminAwarenessMaintenanceModel) FindEligible(context.Context) ([]model.
 			result = append(result, point)
 		}
 	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].SortOrderGlobal == result[j].SortOrderGlobal {
+			return result[i].AwarenessId < result[j].AwarenessId
+		}
+		return result[i].SortOrderGlobal < result[j].SortOrderGlobal
+	})
 	return result, nil
+}
+
+func (m *adminAwarenessMaintenanceModel) FindOne(_ context.Context, id uint64) (*model.Awareness, error) {
+	for i := range m.points {
+		if m.points[i].AwarenessId == id {
+			return &m.points[i], nil
+		}
+	}
+	return nil, model.ErrNotFound
+}
+
+func (m *adminAwarenessMaintenanceModel) CreateMinimal(_ context.Context, title, summary, details string) (*model.Awareness, error) {
+	if m.nextID == 0 {
+		m.nextID = 900
+	}
+	item := model.Awareness{
+		AwarenessId:     m.nextID,
+		PointTitle:      title,
+		Summary:         sql.NullString{String: summary, Valid: summary != ""},
+		Details:         sql.NullString{String: details, Valid: details != ""},
+		Status:          1,
+		IsMeta:          0,
+		SortOrderGlobal: 999,
+	}
+	m.created = &item
+	m.points = append(m.points, item)
+	m.nextID++
+	return &item, nil
+}
+
+func (m *adminAwarenessMaintenanceModel) MoveToPosition(_ context.Context, id uint64, position int64) error {
+	m.reorderedID = id
+	m.reorderedPosition = position
+
+	eligible := make([]model.Awareness, 0, len(m.points))
+	for _, point := range m.points {
+		if point.Status == 1 && point.IsMeta == 0 {
+			eligible = append(eligible, point)
+		}
+	}
+	sort.Slice(eligible, func(i, j int) bool {
+		if eligible[i].SortOrderGlobal == eligible[j].SortOrderGlobal {
+			return eligible[i].AwarenessId < eligible[j].AwarenessId
+		}
+		return eligible[i].SortOrderGlobal < eligible[j].SortOrderGlobal
+	})
+
+	orderedIDs := make([]uint64, 0, len(eligible))
+	for _, point := range eligible {
+		if point.AwarenessId != id {
+			orderedIDs = append(orderedIDs, point.AwarenessId)
+		}
+	}
+	insertAt := int(position - 1)
+	if insertAt < 0 {
+		insertAt = 0
+	}
+	if insertAt > len(orderedIDs) {
+		insertAt = len(orderedIDs)
+	}
+	orderedIDs = append(orderedIDs, 0)
+	copy(orderedIDs[insertAt+1:], orderedIDs[insertAt:])
+	orderedIDs[insertAt] = id
+
+	for order, orderedID := range orderedIDs {
+		for i := range m.points {
+			if m.points[i].AwarenessId == orderedID {
+				m.points[i].SortOrderGlobal = int64(order + 1)
+			}
+		}
+	}
+	return nil
 }
 
 func (m *adminAwarenessMaintenanceModel) UpdateContent(_ context.Context, id uint64, title, summary, details string) error {
@@ -180,6 +264,182 @@ func TestAdminExcludeAwarenessDisablesPointAndReflowsScheduleFromEffectiveDate(t
 	}
 	if !schedule.upserts[0].AwarenessId.Valid || schedule.upserts[0].AwarenessId.Int64 != 103 {
 		t.Fatalf("expected 2026-05-02 to reflow to awareness 103, got %+v", schedule.upserts[0])
+	}
+}
+
+func TestAdminInsertExistingAwarenessPlacesPointOnEffectiveDateAndReflows(t *testing.T) {
+	t.Parallel()
+
+	awareness := &adminAwarenessMaintenanceModel{points: []model.Awareness{
+		{AwarenessId: 101, PointTitle: "周一", SortOrderGlobal: 1, Status: 1},
+		{AwarenessId: 102, PointTitle: "周二", SortOrderGlobal: 2, Status: 1},
+		{AwarenessId: 103, PointTitle: "原周三", SortOrderGlobal: 3, Status: 1},
+		{AwarenessId: 104, PointTitle: "平常心", SortOrderGlobal: 99, Status: 1},
+	}}
+	schedule := &adminAwarenessScheduleModel{}
+	logic := NewAdminInsertAwarenessLogic(WithCurrentAdminID(context.Background(), 1), &svc.ServiceContext{
+		AwarenessModel:             awareness,
+		AwarenessCyclesModel:       &adminAwarenessCycleModel{cycle: testMaintenanceCycle(t)},
+		AwarenessScheduleDaysModel: schedule,
+	})
+
+	_, err := logic.AdminInsertAwareness(&types.AdminAwarenessInsertReq{
+		ExistingAwarenessId: 104,
+		EffectiveDate:       "2026-05-03",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if awareness.reorderedID != 104 || awareness.reorderedPosition != 3 {
+		t.Fatalf("expected awareness 104 inserted at position 3, got id=%d position=%d", awareness.reorderedID, awareness.reorderedPosition)
+	}
+	if len(schedule.upserts) == 0 {
+		t.Fatalf("expected schedule regeneration")
+	}
+	if schedule.upserts[0].AwarenessId.Int64 != 104 || schedule.upserts[0].AwarenessTitle.String != "平常心" {
+		t.Fatalf("expected selected date to become 平常心, got %+v", schedule.upserts[0])
+	}
+	if len(schedule.upserts) > 1 && schedule.upserts[1].AwarenessId.Int64 != 103 {
+		t.Fatalf("expected original third point to shift after inserted point, got %+v", schedule.upserts[1])
+	}
+}
+
+func TestAdminInsertNewAwarenessCreatesPointAndPlacesItOnEffectiveDate(t *testing.T) {
+	t.Parallel()
+
+	awareness := &adminAwarenessMaintenanceModel{points: []model.Awareness{
+		{AwarenessId: 101, PointTitle: "周一", SortOrderGlobal: 1, Status: 1},
+		{AwarenessId: 102, PointTitle: "周二", SortOrderGlobal: 2, Status: 1},
+		{AwarenessId: 103, PointTitle: "原周三", SortOrderGlobal: 3, Status: 1},
+	}}
+	schedule := &adminAwarenessScheduleModel{}
+	logic := NewAdminInsertAwarenessLogic(WithCurrentAdminID(context.Background(), 1), &svc.ServiceContext{
+		AwarenessModel:             awareness,
+		AwarenessCyclesModel:       &adminAwarenessCycleModel{cycle: testMaintenanceCycle(t)},
+		AwarenessScheduleDaysModel: schedule,
+	})
+
+	_, err := logic.AdminInsertAwareness(&types.AdminAwarenessInsertReq{
+		Title:         "平常心",
+		Summary:       "练习稳定地看见起伏",
+		Description:   "把注意力放回当下。",
+		EffectiveDate: "2026-05-03",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if awareness.created == nil || awareness.created.PointTitle != "平常心" {
+		t.Fatalf("expected new awareness to be created, got %+v", awareness.created)
+	}
+	if awareness.reorderedID != awareness.created.AwarenessId || awareness.reorderedPosition != 3 {
+		t.Fatalf("expected new awareness inserted at position 3, got id=%d position=%d", awareness.reorderedID, awareness.reorderedPosition)
+	}
+	if schedule.upserts[0].AwarenessTitle.String != "平常心" {
+		t.Fatalf("expected selected date to use new point, got %+v", schedule.upserts[0])
+	}
+}
+
+func TestAdminInsertExistingAwarenessFromEarlierPositionPlacesPointOnLaterDate(t *testing.T) {
+	t.Parallel()
+
+	awareness := &adminAwarenessMaintenanceModel{points: []model.Awareness{
+		{AwarenessId: 101, PointTitle: "提前项", SortOrderGlobal: 1, Status: 1},
+		{AwarenessId: 102, PointTitle: "第二项", SortOrderGlobal: 2, Status: 1},
+		{AwarenessId: 103, PointTitle: "原目标日", SortOrderGlobal: 3, Status: 1},
+		{AwarenessId: 104, PointTitle: "第四项", SortOrderGlobal: 4, Status: 1},
+	}}
+	schedule := &adminAwarenessScheduleModel{}
+	logic := NewAdminInsertAwarenessLogic(WithCurrentAdminID(context.Background(), 1), &svc.ServiceContext{
+		AwarenessModel:             awareness,
+		AwarenessCyclesModel:       &adminAwarenessCycleModel{cycle: testMaintenanceCycle(t)},
+		AwarenessScheduleDaysModel: schedule,
+	})
+
+	_, err := logic.AdminInsertAwareness(&types.AdminAwarenessInsertReq{
+		ExistingAwarenessId: 101,
+		EffectiveDate:       "2026-05-03",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(schedule.upserts) < 2 {
+		t.Fatalf("expected regenerated schedule, got %+v", schedule.upserts)
+	}
+	if schedule.upserts[0].AwarenessId.Int64 != 101 || schedule.upserts[0].AwarenessTitle.String != "提前项" {
+		t.Fatalf("expected selected date to become 提前项, got %+v", schedule.upserts[0])
+	}
+	if schedule.upserts[1].AwarenessId.Int64 != 104 {
+		t.Fatalf("expected point after inserted date to follow reordered sequence, got %+v", schedule.upserts[1])
+	}
+}
+
+func TestAdminInsertDisabledExistingAwarenessReturnsErrorWithoutRegeneratingSchedule(t *testing.T) {
+	t.Parallel()
+
+	awareness := &adminAwarenessMaintenanceModel{points: []model.Awareness{
+		{AwarenessId: 101, PointTitle: "周一", SortOrderGlobal: 1, Status: 1},
+		{AwarenessId: 102, PointTitle: "停用项", SortOrderGlobal: 2, Status: 0},
+		{AwarenessId: 103, PointTitle: "周三", SortOrderGlobal: 3, Status: 1},
+	}}
+	schedule := &adminAwarenessScheduleModel{}
+	logic := NewAdminInsertAwarenessLogic(WithCurrentAdminID(context.Background(), 1), &svc.ServiceContext{
+		AwarenessModel:             awareness,
+		AwarenessCyclesModel:       &adminAwarenessCycleModel{cycle: testMaintenanceCycle(t)},
+		AwarenessScheduleDaysModel: schedule,
+	})
+
+	_, err := logic.AdminInsertAwareness(&types.AdminAwarenessInsertReq{
+		ExistingAwarenessId: 102,
+		EffectiveDate:       "2026-05-02",
+	})
+	if err == nil {
+		t.Fatalf("expected disabled awareness insert to fail")
+	}
+	if !strings.Contains(err.Error(), "disabled awareness cannot be inserted") {
+		t.Fatalf("expected clear disabled awareness error, got %v", err)
+	}
+	if awareness.reorderedID != 0 {
+		t.Fatalf("expected disabled awareness not to be reordered, got %d", awareness.reorderedID)
+	}
+	if len(schedule.upserts) != 0 {
+		t.Fatalf("expected no schedule regeneration, got %+v", schedule.upserts)
+	}
+}
+
+func TestAdminInsertNewAwarenessCalculatesPositionBeforeCreatingEligiblePoint(t *testing.T) {
+	t.Parallel()
+
+	awareness := &adminAwarenessMaintenanceModel{points: []model.Awareness{
+		{AwarenessId: 101, PointTitle: "周一", SortOrderGlobal: 1, Status: 1},
+		{AwarenessId: 102, PointTitle: "周二", SortOrderGlobal: 2, Status: 1},
+		{AwarenessId: 103, PointTitle: "周三", SortOrderGlobal: 3, Status: 1},
+	}}
+	schedule := &adminAwarenessScheduleModel{}
+	logic := NewAdminInsertAwarenessLogic(WithCurrentAdminID(context.Background(), 1), &svc.ServiceContext{
+		AwarenessModel:             awareness,
+		AwarenessCyclesModel:       &adminAwarenessCycleModel{cycle: testMaintenanceCycle(t)},
+		AwarenessScheduleDaysModel: schedule,
+	})
+
+	_, err := logic.AdminInsertAwareness(&types.AdminAwarenessInsertReq{
+		Title:         "新一轮首日",
+		EffectiveDate: "2026-05-07",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if awareness.reorderedID != awareness.created.AwarenessId || awareness.reorderedPosition != 3 {
+		t.Fatalf("expected new awareness inserted at original position 3, got id=%d position=%d", awareness.reorderedID, awareness.reorderedPosition)
+	}
+	if len(schedule.upserts) == 0 {
+		t.Fatalf("expected schedule regeneration")
+	}
+	if schedule.upserts[0].AwarenessTitle.String != "新一轮首日" {
+		t.Fatalf("expected selected date to use new point, got %+v", schedule.upserts[0])
 	}
 }
 

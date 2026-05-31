@@ -27,8 +27,13 @@ type scheduleDayPlan struct {
 	EffectiveDayIndex sql.NullInt64
 }
 
+type schedulePlanAnchor struct {
+	CycleDayIndex int64
+	Valid         bool
+}
+
 func generateAwarenessScheduleDays(cycle *model.AwarenessCycles, points []model.Awareness, pauses []model.AwarenessCyclePauses, fromDate, untilDate time.Time) []model.AwarenessScheduleDays {
-	plans := buildAwarenessSchedulePlan(cycle, points, pauses, fromDate, untilDate)
+	plans := buildAwarenessSchedulePlanWithAnchor(cycle, points, pauses, fromDate, untilDate, schedulePlanAnchor{})
 	items := make([]model.AwarenessScheduleDays, 0, len(plans))
 	for _, plan := range plans {
 		items = append(items, schedulePlanToModel(cycle, plan))
@@ -37,6 +42,10 @@ func generateAwarenessScheduleDays(cycle *model.AwarenessCycles, points []model.
 }
 
 func buildAwarenessSchedulePlan(cycle *model.AwarenessCycles, points []model.Awareness, pauses []model.AwarenessCyclePauses, fromDate, untilDate time.Time) []scheduleDayPlan {
+	return buildAwarenessSchedulePlanWithAnchor(cycle, points, pauses, fromDate, untilDate, schedulePlanAnchor{})
+}
+
+func buildAwarenessSchedulePlanWithAnchor(cycle *model.AwarenessCycles, points []model.Awareness, pauses []model.AwarenessCyclePauses, fromDate, untilDate time.Time, anchor schedulePlanAnchor) []scheduleDayPlan {
 	if cycle == nil || untilDate.Before(fromDate) {
 		return nil
 	}
@@ -58,6 +67,9 @@ func buildAwarenessSchedulePlan(cycle *model.AwarenessCycles, points []model.Awa
 	}
 
 	effectiveDayIndex := effectiveDaysBeforeFrom
+	if anchor.Valid && len(points) > 0 && cycleLength > 0 && anchor.CycleDayIndex >= 0 && int(anchor.CycleDayIndex) < len(points) {
+		effectiveDayIndex = anchoredEffectiveDayIndex(effectiveDaysBeforeFrom, cycleLength, anchor.CycleDayIndex)
+	}
 	plans := make([]scheduleDayPlan, 0, int(untilDate.Sub(fromDate).Hours()/24)+1)
 	for date := fromDate; !date.After(untilDate); date = date.AddDate(0, 0, 1) {
 		plan := scheduleDayPlan{Date: date, DayType: scheduleDayRest}
@@ -92,6 +104,16 @@ func buildAwarenessSchedulePlan(cycle *model.AwarenessCycles, points []model.Awa
 	}
 
 	return plans
+}
+
+func anchoredEffectiveDayIndex(base int64, cycleLength int, cycleDayIndex int64) int64 {
+	if cycleLength <= 0 {
+		return base
+	}
+	length := int64(cycleLength)
+	remainder := base % length
+	offset := (cycleDayIndex - remainder + length) % length
+	return base + offset
 }
 
 func findPauseForDate(pauses []model.AwarenessCyclePauses, date time.Time) *model.AwarenessCyclePauses {
@@ -166,6 +188,10 @@ func getActiveAwarenessCycle(ctx context.Context, svcCtx *svc.ServiceContext) (*
 }
 
 func generateAndStoreAwarenessSchedule(ctx context.Context, svcCtx *svc.ServiceContext, cycle *model.AwarenessCycles, fromDate time.Time) error {
+	return generateAndStoreAwarenessScheduleWithAnchor(ctx, svcCtx, cycle, fromDate, schedulePlanAnchor{})
+}
+
+func generateAndStoreAwarenessScheduleWithAnchor(ctx context.Context, svcCtx *svc.ServiceContext, cycle *model.AwarenessCycles, fromDate time.Time, anchor schedulePlanAnchor) error {
 	if svcCtx.AwarenessScheduleDaysModel == nil || svcCtx.AwarenessModel == nil {
 		return nil
 	}
@@ -186,7 +212,11 @@ func generateAndStoreAwarenessSchedule(ctx context.Context, svcCtx *svc.ServiceC
 	}
 	fromDate = normalizeDate(fromDate)
 	untilDate := fromDate.AddDate(0, 0, horizon-1)
-	items := generateAwarenessScheduleDays(cycle, points, pauses, fromDate, untilDate)
+	plans := buildAwarenessSchedulePlanWithAnchor(cycle, points, pauses, fromDate, untilDate, anchor)
+	items := make([]model.AwarenessScheduleDays, 0, len(plans))
+	for _, plan := range plans {
+		items = append(items, schedulePlanToModel(cycle, plan))
+	}
 	for i := range items {
 		if err = svcCtx.AwarenessScheduleDaysModel.Upsert(ctx, &items[i]); err != nil {
 			return fmt.Errorf("upsert schedule day %s: %w", items[i].ScheduleDate.Format("2006-01-02"), err)

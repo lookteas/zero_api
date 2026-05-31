@@ -481,6 +481,13 @@ type (
 		id            uint64 `path:"id"`
 		effectiveDate string `json:"effectiveDate,optional"`
 	}
+	AdminAwarenessInsertReq {
+		existingAwarenessId uint64 `json:"existingAwarenessId,optional"`
+		title               string `json:"title,optional"`
+		summary             string `json:"summary,optional"`
+		description         string `json:"description,optional"`
+		effectiveDate       string `json:"effectiveDate"`
+	}
 	AwarenessCycleDayInfo {
 		date        string `json:"date"`
 		title       string `json:"title"`
@@ -614,6 +621,9 @@ service zero-api {
 
 	@handler AdminUpdateAwarenessCycle
 	patch /admin/awareness-cycle (AwarenessCycleUpdateReq) returns (SimpleResp)
+
+	@handler AdminInsertAwareness
+	post /admin/awareness/insert (AdminAwarenessInsertReq) returns (SimpleResp)
 
 	@handler AdminUpdateAwareness
 	patch /admin/awareness/:id (AdminAwarenessUpdateReq) returns (SimpleResp)

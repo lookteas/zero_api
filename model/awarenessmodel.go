@@ -21,6 +21,9 @@ var _ AwarenessModel = (*customAwarenessModel)(nil)
 type (
 	AwarenessModel interface {
 		FindEligible(ctx context.Context) ([]Awareness, error)
+		FindOne(ctx context.Context, id uint64) (*Awareness, error)
+		CreateMinimal(ctx context.Context, title, summary, details string) (*Awareness, error)
+		MoveToPosition(ctx context.Context, id uint64, position int64) error
 		UpdateContent(ctx context.Context, id uint64, title, summary, details string) error
 		Disable(ctx context.Context, id uint64) error
 		withSession(session sqlx.Session) AwarenessModel
@@ -73,6 +76,75 @@ func (m *customAwarenessModel) FindEligible(ctx context.Context) ([]Awareness, e
 	query := fmt.Sprintf("select %s from %s where `status` = 1 and `is_meta` = 0 order by `sort_order_global` asc, `awareness_id` asc", awarenessRows, m.table)
 	err := m.conn.QueryRowsCtx(ctx, &resp, query)
 	return resp, err
+}
+
+func (m *customAwarenessModel) FindOne(ctx context.Context, id uint64) (*Awareness, error) {
+	var resp Awareness
+	query := fmt.Sprintf("select %s from %s where `awareness_id` = ? limit 1", awarenessRows, m.table)
+	err := m.conn.QueryRowCtx(ctx, &resp, query, id)
+	switch err {
+	case nil:
+		return &resp, nil
+	case sqlx.ErrNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, err
+	}
+}
+
+func (m *customAwarenessModel) CreateMinimal(ctx context.Context, title, summary, details string) (*Awareness, error) {
+	query := fmt.Sprintf("insert into %s (`chapter_id`, `region_id`, `section_id`, `point_title`, `summary`, `details`, `status`, `is_meta`, `sort_order_global`) values (0, 0, 0, ?, ?, ?, 1, 0, 999999)", m.table)
+	result, err := m.conn.ExecCtx(ctx, query, title, nullAwarenessString(summary), nullAwarenessString(details))
+	if err != nil {
+		return nil, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	return m.FindOne(ctx, uint64(id))
+}
+
+func (m *customAwarenessModel) MoveToPosition(ctx context.Context, id uint64, position int64) error {
+	if position <= 0 {
+		position = 1
+	}
+
+	points, err := m.FindEligible(ctx)
+	if err != nil {
+		return err
+	}
+	orderedIDs := make([]uint64, 0, len(points))
+	found := false
+	for _, point := range points {
+		if point.AwarenessId == id {
+			found = true
+			continue
+		}
+		orderedIDs = append(orderedIDs, point.AwarenessId)
+	}
+	if !found {
+		return ErrNotFound
+	}
+
+	insertAt := int(position - 1)
+	if insertAt < 0 {
+		insertAt = 0
+	}
+	if insertAt > len(orderedIDs) {
+		insertAt = len(orderedIDs)
+	}
+	orderedIDs = append(orderedIDs, 0)
+	copy(orderedIDs[insertAt+1:], orderedIDs[insertAt:])
+	orderedIDs[insertAt] = id
+
+	query := fmt.Sprintf("update %s set `sort_order_global` = ? where `awareness_id` = ?", m.table)
+	for order, orderedID := range orderedIDs {
+		if _, err = m.conn.ExecCtx(ctx, query, order+1, orderedID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (m *customAwarenessModel) UpdateContent(ctx context.Context, id uint64, title, summary, details string) error {

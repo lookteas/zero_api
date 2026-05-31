@@ -30,6 +30,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: AdminUpdateAwarenessCycleHandler(serverCtx),
 			},
 			{
+				Method:  http.MethodPost,
+				Path:    "/admin/awareness/insert",
+				Handler: AdminInsertAwarenessHandler(serverCtx),
+			},
+			{
 				Method:  http.MethodPatch,
 				Path:    "/admin/awareness/:id",
 				Handler: AdminUpdateAwarenessHandler(serverCtx),

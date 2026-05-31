@@ -27,6 +27,14 @@ type AdminAwarenessExcludeReq struct {
 	EffectiveDate string `json:"effectiveDate,optional"`
 }
 
+type AdminAwarenessInsertReq struct {
+	ExistingAwarenessId uint64 `json:"existingAwarenessId,optional"`
+	Title               string `json:"title,optional"`
+	Summary             string `json:"summary,optional"`
+	Description         string `json:"description,optional"`
+	EffectiveDate       string `json:"effectiveDate"`
+}
+
 type AwarenessCycleDayInfo struct {
 	Date        string `json:"date"`
 	Title       string `json:"title"`
