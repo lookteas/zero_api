@@ -1,12 +1,12 @@
 # Zero API
 
-`apps/api` 是 Zero 项目的后端服务，基于 `go-zero` 搭建，负责登录注册、今日打卡、觉察记录、复盘、每周投票、每周讨论和后台管理等核心业务接口。
+`apps/api` 是 Zero 项目的后端服务，基于 `go-zero` 搭建，负责登录注册、今日打卡、自由模式、觉察记录、复盘、每周投票、每周讨论和后台管理等核心业务接口。
 
 ## 项目定位
 
 这个服务当前承担两类职责：
 
-- 面向用户侧页面的业务接口：今天做什么、今天记录了什么、后续什么时候复盘、本周投票和讨论是什么。
+- 面向用户侧页面的业务接口：今天做什么、自由练了什么、今天记录了什么、后续什么时候复盘、本周投票和讨论是什么。
 - 面向后台管理的配置接口：主题排期、投票周期、讨论信息、后台概览和管理员登录。
 
 接口统一挂在前缀 `http://<host>:<port>/api/v1` 下，默认本地地址是 `http://localhost:8888/api/v1`。
@@ -36,7 +36,7 @@
 - 目录：`internal/logic`
 - 作用：承载业务规则，是当前项目最核心的一层。
 - 说明：
-  - 登录注册、今日打卡、觉察记录、复盘排期、周投票、讨论生成、后台管理都在这一层完成。
+  - 登录注册、今日打卡、自由模式、觉察记录、复盘排期、周投票、讨论生成、后台管理都在这一层完成。
   - 这里既包含接口级 logic，也包含跨接口复用的业务帮助函数，比如：
     - `review_cycle.go`
     - `review_schedule.go`
@@ -136,7 +136,27 @@
 - 提交后会进入后续复盘节奏。
 - 逻辑里已经处理“可编辑”“可补反思”等状态字段。
 
-### 3. 觉察记录 / 日志
+### 3. 自由模式
+
+对应能力：
+
+- 获取自由模式章节与意识点：`GET /free-mode/chapters`
+- 获取当前用户自由练习记录：`GET /free-mode/practices`
+- 创建自由练习记录：`POST /free-mode/practices`
+
+相关逻辑主要在：
+
+- `listfreemodechapterslogic.go`
+- `listfreemodepracticeslogic.go`
+- `createfreemodepracticelogic.go`
+
+业务要点：
+
+- 自由模式按章节返回意识点，避免前端一次性平铺 200+ 个意识点。
+- 自由模式使用独立表 `free_mode_practices` 保存记录。
+- 自由模式不创建、不提交、不更新 `daily_tasks`，不计入“每天一个点”的日常打卡。
+
+### 4. 觉察记录 / 日志
 
 对应能力：
 
@@ -157,7 +177,7 @@
 - 觉察记录和当天打卡主题关联。
 - 日志内容会被首页、今日页、日志页等多个用户侧页面回读。
 
-### 4. 复盘体系
+### 5. 复盘体系
 
 对应能力：
 
@@ -185,7 +205,7 @@
 - 复盘不是单次动作，而是按周期推进。
 - 当前项目已经把“待复盘项生成”“复盘阶段推进”“历史回看”纳入后端逻辑。
 
-### 5. 首页聚合 / 用户概览
+### 6. 首页聚合 / 用户概览
 
 对应能力：
 
@@ -201,7 +221,7 @@
 
 - 首页接口负责把今日打卡、最近觉察、待复盘、补做复盘等信息聚合给前端首页使用。
 
-### 6. 每周投票与讨论
+### 7. 每周投票与讨论
 
 对应能力：
 
@@ -225,7 +245,7 @@
 - 当前讨论主题与投票结果、周排期相关。
 - 讨论与投票已经形成一条后端闭环，而不是孤立页面。
 
-### 7. 后台管理
+### 8. 后台管理
 
 对应能力：
 
@@ -299,6 +319,14 @@
 | PATCH | `/daily-tasks/:id` | 更新打卡内容 |
 | POST | `/daily-tasks/:id/submit` | 提交打卡 |
 
+### 自由模式
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/free-mode/chapters` | 按章节获取可自由练习的意识点 |
+| GET | `/free-mode/practices` | 获取当前用户自由练习记录 |
+| POST | `/free-mode/practices` | 创建独立自由练习记录 |
+
 ### 觉察记录 / 日志
 
 | 方法 | 路径 | 说明 |
@@ -354,6 +382,9 @@
 - `refresh_tokens`
 - `topics`
 - `daily_tasks`
+- `chapters`
+- `awareness`
+- `free_mode_practices`
 - `daily_logs`
 - `review_items`
 - `review_records`
@@ -416,11 +447,14 @@ go run ./cmd/initdb -f ./etc/zero-api.yaml
 - 自动去掉 DSN 中的数据库名，先连到 MySQL 实例
 - 按文件名排序执行 SQL 文件
 - 依次执行当前工作区根目录下 `docs/sql/` 里的 `.sql` 文件
+- 继续执行 `apps/api/docs/sql/` 里的 API 本地 SQL 文件，例如意识点基础表和 `free_mode_practices` 自由模式记录表
 
 ### 重要说明
 
 当前 `docs` 目录不属于 `api` 仓库本身，而是本地工作区资料。
 如果你把 `apps/api` 单独作为仓库使用，需要保证本地仍然提供等价的 SQL 初始化文件，否则 `initdb` 找不到 `docs/sql`。
+
+自由模式依赖 `apps/api/docs/sql/009_free_mode_practices.sql`。如果数据库已经存在，需要手动执行这份迁移或使用更新后的 `initdb` 初始化新库。
 
 ---
 
@@ -603,6 +637,9 @@ go test ./...
 - `internal/logic/review_schedule.go`
 - `internal/logic/weekly_flow.go`
 - `internal/logic/repository_helpers.go`
+- `internal/logic/listfreemodechapterslogic.go`
+- `internal/logic/createfreemodepracticelogic.go`
+- `internal/logic/listfreemodepracticeslogic.go`
 - `internal/logic/gethomelogic.go`
 
 ---
@@ -613,3 +650,4 @@ go test ./...
 - 现阶段允许开发态过渡实现，但 README 中提到的“默认用户回退”“开发 token”都应视为后续待补强点。
 - 改接口时，优先先看 `zero.api`，再看对应 `handler`、`logic`、`types`、`model` 是否需要同步。
 - 改数据库相关逻辑时，先确认 `model`、`repository_helpers.go` 和对应测试是否需要一起更新。
+- 自由模式必须保持独立存储和独立接口，不要把自由练习记录写入 `daily_tasks` 或日常打卡提交链路。
