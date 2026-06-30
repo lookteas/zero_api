@@ -43,6 +43,13 @@ func nullString(value string) sql.NullString {
 	return sql.NullString{String: value, Valid: true}
 }
 
+func nullableString(value sql.NullString) string {
+	if !value.Valid {
+		return ""
+	}
+	return value.String
+}
+
 func parseTopicScheduleDate(input string) (sql.NullTime, error) {
 	value := input
 	if value == "" {
@@ -341,13 +348,6 @@ func scheduleDayToTopicInfo(item *model.AwarenessScheduleDays) types.TopicInfo {
 		ReferenceMax:   nullDecimalString(item.ReferenceMax),
 		ProgressNo:     nullableInt64(item.EffectiveDayIndex) + 1,
 	}
-}
-
-func nullableString(value sql.NullString) string {
-	if !value.Valid {
-		return ""
-	}
-	return value.String
 }
 
 func nullableInt64(value sql.NullInt64) int64 {

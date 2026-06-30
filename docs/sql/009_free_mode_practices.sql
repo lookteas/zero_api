@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS free_mode_practices (
+  practice_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '自由模式练习记录ID',
+  user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+  practice_date DATE NOT NULL COMMENT '练习日期',
+  chapter_id BIGINT UNSIGNED NOT NULL COMMENT '章节ID',
+  chapter_no INT NOT NULL DEFAULT 0 COMMENT '章节序号',
+  chapter_title VARCHAR(255) NOT NULL DEFAULT '' COMMENT '章节标题',
+  chapter_full_title VARCHAR(255) NOT NULL DEFAULT '' COMMENT '章节完整标题',
+  awareness_id BIGINT UNSIGNED NOT NULL COMMENT '意识强度点ID',
+  section_id BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '小节ID',
+  awareness_title VARCHAR(255) NOT NULL DEFAULT '' COMMENT '意识强度点标题',
+  awareness_summary TEXT DEFAULT NULL COMMENT '意识强度点摘要快照',
+  awareness_details LONGTEXT DEFAULT NULL COMMENT '意识强度点详情快照',
+  practice_note TEXT DEFAULT NULL COMMENT '自由练习备注',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (practice_id),
+  KEY idx_free_mode_practices_user_date (user_id, practice_date),
+  KEY idx_free_mode_practices_awareness (awareness_id),
+  KEY idx_free_mode_practices_chapter (chapter_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='自由模式独立练习记录表';

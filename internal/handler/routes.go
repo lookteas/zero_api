@@ -216,6 +216,21 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			},
 			{
 				Method:  http.MethodGet,
+				Path:    "/free-mode/chapters",
+				Handler: ListFreemodeChaptersHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/free-mode/practices",
+				Handler: ListFreemodePracticesHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/free-mode/practices",
+				Handler: CreateFreemodePracticeHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
 				Path:    "/review-items",
 				Handler: ListReviewItemsHandler(serverCtx),
 			},

@@ -67,6 +67,80 @@ type AwarenessCycleAdminResp struct {
 	Data      AwarenessCycleAdminInfo `json:"data"`
 }
 
+type FreeModeAwarenessInfo struct {
+	AwarenessId    uint64 `json:"awarenessId"`
+	ChapterId      uint64 `json:"chapterId"`
+	SectionId      uint64 `json:"sectionId"`
+	Title          string `json:"title"`
+	Summary        string `json:"summary,optional"`
+	Details        string `json:"details,optional"`
+	OrderNo        int64  `json:"orderNo"`
+	Theme          string `json:"theme,optional"`
+	ReferenceMin   string `json:"referenceMin,optional"`
+	ReferenceMax   string `json:"referenceMax,optional"`
+}
+
+type FreeModeChapterInfo struct {
+	ChapterId       uint64                 `json:"chapterId"`
+	ChapterNo       int64                  `json:"chapterNo"`
+	ChapterTitle    string                 `json:"chapterTitle"`
+	ChapterFullTitle string                `json:"chapterFullTitle"`
+	Points          []FreeModeAwarenessInfo `json:"points"`
+}
+
+type FreeModeChapterListData struct {
+	List []FreeModeChapterInfo `json:"list"`
+}
+
+type FreeModeChapterListResp struct {
+	Code      int64                 `json:"code"`
+	Message   string                `json:"message"`
+	RequestId string                `json:"requestId,optional"`
+	Data      FreeModeChapterListData `json:"data"`
+}
+
+type FreeModePracticeCreateReq struct {
+	ChapterId    uint64 `json:"chapterId"`
+	AwarenessId  uint64 `json:"awarenessId"`
+	PracticeNote string `json:"practiceNote,optional"`
+	PracticeDate string `json:"practiceDate,optional"`
+}
+
+type FreeModePracticeInfo struct {
+	PracticeId      uint64 `json:"practiceId"`
+	PracticeDate    string `json:"practiceDate"`
+	ChapterId       uint64 `json:"chapterId"`
+	ChapterNo       int64  `json:"chapterNo"`
+	ChapterTitle    string `json:"chapterTitle"`
+	ChapterFullTitle string `json:"chapterFullTitle"`
+	AwarenessId     uint64 `json:"awarenessId"`
+	SectionId       uint64 `json:"sectionId"`
+	AwarenessTitle  string `json:"awarenessTitle"`
+	AwarenessSummary string `json:"awarenessSummary,optional"`
+	AwarenessDetails string `json:"awarenessDetails,optional"`
+	PracticeNote    string `json:"practiceNote,optional"`
+	CreatedAt       string `json:"createdAt"`
+	UpdatedAt       string `json:"updatedAt"`
+}
+
+type FreeModePracticeListData struct {
+	List []FreeModePracticeInfo `json:"list"`
+}
+
+type FreeModePracticeListResp struct {
+	Code      int64                   `json:"code"`
+	Message   string                  `json:"message"`
+	RequestId string                  `json:"requestId,optional"`
+	Data      FreeModePracticeListData `json:"data"`
+}
+
+type FreeModePracticeResp struct {
+	Code      int64              `json:"code"`
+	Message   string             `json:"message"`
+	RequestId string             `json:"requestId,optional"`
+	Data      FreeModePracticeInfo `json:"data"`
+}
+
 type CodeLoginReq struct {
 	TargetType  string `json:"targetType"`
 	TargetValue string `json:"targetValue"`

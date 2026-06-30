@@ -67,6 +67,71 @@ type (
 		createdAt        string `json:"createdAt"`
 		updatedAt        string `json:"updatedAt"`
 	}
+	FreeModeAwarenessInfo {
+		awarenessId  uint64 `json:"awarenessId"`
+		chapterId    uint64 `json:"chapterId"`
+		sectionId    uint64 `json:"sectionId"`
+		title        string `json:"title"`
+		summary      string `json:"summary,optional"`
+		details      string `json:"details,optional"`
+		orderNo      int64  `json:"orderNo"`
+		theme        string `json:"theme,optional"`
+		referenceMin string `json:"referenceMin,optional"`
+		referenceMax string `json:"referenceMax,optional"`
+	}
+	FreeModeChapterInfo {
+		chapterId       uint64                  `json:"chapterId"`
+		chapterNo       int64                   `json:"chapterNo"`
+		chapterTitle    string                  `json:"chapterTitle"`
+		chapterFullTitle string                 `json:"chapterFullTitle"`
+		points          []FreeModeAwarenessInfo `json:"points"`
+	}
+	FreeModeChapterListData {
+		list []FreeModeChapterInfo `json:"list"`
+	}
+	FreeModeChapterListResp {
+		code      int64                `json:"code"`
+		message   string               `json:"message"`
+		requestId string               `json:"requestId,optional"`
+		data      FreeModeChapterListData `json:"data"`
+	}
+	FreeModePracticeCreateReq {
+		chapterId    uint64 `json:"chapterId"`
+		awarenessId  uint64 `json:"awarenessId"`
+		practiceNote string `json:"practiceNote,optional"`
+		practiceDate string `json:"practiceDate,optional"`
+	}
+	FreeModePracticeInfo {
+		practiceId       uint64 `json:"practiceId"`
+		practiceDate     string `json:"practiceDate"`
+		chapterId        uint64 `json:"chapterId"`
+		chapterNo        int64  `json:"chapterNo"`
+		chapterTitle     string `json:"chapterTitle"`
+		chapterFullTitle string `json:"chapterFullTitle"`
+		awarenessId      uint64 `json:"awarenessId"`
+		sectionId        uint64 `json:"sectionId"`
+		awarenessTitle   string `json:"awarenessTitle"`
+		awarenessSummary string `json:"awarenessSummary,optional"`
+		awarenessDetails string `json:"awarenessDetails,optional"`
+		practiceNote     string `json:"practiceNote,optional"`
+		createdAt        string `json:"createdAt"`
+		updatedAt        string `json:"updatedAt"`
+	}
+	FreeModePracticeListData {
+		list []FreeModePracticeInfo `json:"list"`
+	}
+	FreeModePracticeListResp {
+		code      int64                 `json:"code"`
+		message   string                `json:"message"`
+		requestId string                `json:"requestId,optional"`
+		data      FreeModePracticeListData `json:"data"`
+	}
+	FreeModePracticeResp {
+		code      int64              `json:"code"`
+		message   string             `json:"message"`
+		requestId string             `json:"requestId,optional"`
+		data      FreeModePracticeInfo `json:"data"`
+	}
 	DailyLogInfo {
 		id          uint64 `json:"id"`
 		dailyTaskId uint64 `json:"dailyTaskId"`
@@ -558,6 +623,15 @@ service zero-api {
 
 	@handler GetMyTodayTask
 	get /me/today-task returns (DailyTaskResp)
+
+	@handler ListFreemodeChapters
+	get /free-mode/chapters returns (FreeModeChapterListResp)
+
+	@handler ListFreemodePractices
+	get /free-mode/practices returns (FreeModePracticeListResp)
+
+	@handler CreateFreemodePractice
+	post /free-mode/practices (FreeModePracticeCreateReq) returns (FreeModePracticeResp)
 
 	@handler CreateDailyTask
 	post /daily-tasks (DailyTaskCreateReq) returns (DailyTaskResp)
