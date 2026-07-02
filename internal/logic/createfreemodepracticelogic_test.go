@@ -71,6 +71,7 @@ type freemodePracticeStoreModel struct {
 	model.FreeModePracticesModel
 	inserted *model.FreeModePractice
 	stored   *model.FreeModePractice
+	updated  *model.FreeModePractice
 }
 
 func (m *freemodePracticeStoreModel) Insert(_ context.Context, data *model.FreeModePractice) (sql.Result, error) {
@@ -84,6 +85,12 @@ func (m *freemodePracticeStoreModel) FindOne(context.Context, uint64) (*model.Fr
 
 func (m *freemodePracticeStoreModel) FindByUserID(context.Context, uint64, int64) ([]model.FreeModePractice, error) {
 	return nil, nil
+}
+
+func (m *freemodePracticeStoreModel) Update(_ context.Context, data *model.FreeModePractice) error {
+	m.updated = data
+	m.stored = data
+	return nil
 }
 
 func (m *freemodePracticeStoreModel) withSession(sqlx.Session) model.FreeModePracticesModel { return m }
@@ -236,5 +243,76 @@ func TestListFreemodePracticesReturnsOnlyCurrentUsersItems(t *testing.T) {
 	}
 	if resp.Data.List[0].AwarenessTitle != "看见紧绷" || resp.Data.List[0].PracticeNote != "先看再说" {
 		t.Fatalf("expected stored practice in response, got %+v", resp.Data.List[0])
+	}
+}
+
+func TestUpdateFreemodePracticeOnlyUpdatesCurrentUsersNote(t *testing.T) {
+	t.Parallel()
+
+	store := &freemodePracticeStoreModel{
+		stored: &model.FreeModePractice{
+			PracticeId:       88,
+			UserId:           7,
+			PracticeDate:     time.Date(2026, 7, 2, 0, 0, 0, 0, time.Local),
+			ChapterId:        2,
+			ChapterNo:        2,
+			ChapterTitle:     "自主意识区",
+			ChapterFullTitle: "第二章 自主意识区",
+			AwarenessId:      201,
+			SectionId:        20,
+			AwarenessTitle:   "看见反应",
+			AwarenessSummary: sql.NullString{String: "先看见反应", Valid: true},
+			AwarenessDetails: sql.NullString{String: "详情保持不变", Valid: true},
+			PracticeNote:     sql.NullString{String: "旧的觉察", Valid: true},
+			CreatedAt:        time.Date(2026, 7, 2, 8, 0, 0, 0, time.Local),
+			UpdatedAt:        time.Date(2026, 7, 2, 8, 0, 0, 0, time.Local),
+		},
+	}
+
+	logic := NewUpdateFreemodePracticeLogic(WithCurrentUserID(context.Background(), 7), &svc.ServiceContext{
+		FreeModePracticesModel: store,
+	})
+
+	resp, err := logic.UpdateFreemodePractice(88, &types.FreeModePracticeUpdateReq{
+		PracticeNote: "新的觉察记录，保留和意识点对照",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if store.updated == nil {
+		t.Fatalf("expected update call")
+	}
+	if store.updated.UserId != 7 || store.updated.PracticeId != 88 {
+		t.Fatalf("expected original ownership retained, got %+v", store.updated)
+	}
+	if !store.updated.PracticeNote.Valid || store.updated.PracticeNote.String != "新的觉察记录，保留和意识点对照" {
+		t.Fatalf("expected updated practice note, got %+v", store.updated.PracticeNote)
+	}
+	if resp.Data.PracticeNote != "新的觉察记录，保留和意识点对照" {
+		t.Fatalf("expected response to include updated note, got %+v", resp.Data)
+	}
+}
+
+func TestUpdateFreemodePracticeRejectsOtherUsersItem(t *testing.T) {
+	t.Parallel()
+
+	store := &freemodePracticeStoreModel{
+		stored: &model.FreeModePractice{
+			PracticeId:   89,
+			UserId:       99,
+			PracticeDate: time.Date(2026, 7, 2, 0, 0, 0, 0, time.Local),
+		},
+	}
+
+	logic := NewUpdateFreemodePracticeLogic(WithCurrentUserID(context.Background(), 7), &svc.ServiceContext{
+		FreeModePracticesModel: store,
+	})
+
+	if _, err := logic.UpdateFreemodePractice(89, &types.FreeModePracticeUpdateReq{PracticeNote: "不能改别人记录"}); err == nil {
+		t.Fatalf("expected ownership error")
+	}
+	if store.updated != nil {
+		t.Fatalf("did not expect update for another user's item")
 	}
 }

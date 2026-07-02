@@ -23,6 +23,7 @@ type (
 		Insert(ctx context.Context, data *FreeModePractice) (sql.Result, error)
 		FindOne(ctx context.Context, id uint64) (*FreeModePractice, error)
 		FindByUserID(ctx context.Context, userID uint64, limit int64) ([]FreeModePractice, error)
+		Update(ctx context.Context, data *FreeModePractice) error
 		withSession(session sqlx.Session) FreeModePracticesModel
 	}
 
@@ -97,6 +98,12 @@ func (m *customFreeModePracticesModel) FindByUserID(ctx context.Context, userID 
 		return resp, m.conn.QueryRowsCtx(ctx, &resp, query, userID, limit)
 	}
 	return resp, m.conn.QueryRowsCtx(ctx, &resp, query, userID)
+}
+
+func (m *customFreeModePracticesModel) Update(ctx context.Context, data *FreeModePractice) error {
+	query := fmt.Sprintf("update %s set `practice_note` = ?, `updated_at` = now() where `practice_id` = ?", m.table)
+	_, err := m.conn.ExecCtx(ctx, query, data.PracticeNote, data.PracticeId)
+	return err
 }
 
 func (m *customFreeModePracticesModel) withSession(session sqlx.Session) FreeModePracticesModel {

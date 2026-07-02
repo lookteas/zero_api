@@ -230,6 +230,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: CreateFreemodePracticeHandler(serverCtx),
 			},
 			{
+				Method:  http.MethodPatch,
+				Path:    "/free-mode/practices/:id",
+				Handler: UpdateFreemodePracticeHandler(serverCtx),
+			},
+			{
 				Method:  http.MethodGet,
 				Path:    "/review-items",
 				Handler: ListReviewItemsHandler(serverCtx),
