@@ -81,9 +81,13 @@ func (l *AdminListTopicsLogic) adminListAwarenessSchedule(req *types.TopicQueryR
 		endDate := normalizeDate(weekStart).AddDate(0, 0, 6)
 		items, scheduleErr := l.svcCtx.AwarenessScheduleDaysModel.FindByCommunityDateRange(l.ctx, defaultCommunityID, weekStart, endDate)
 		if scheduleErr == nil && len(items) == 7 {
+			awarenessByID, awarenessErr := loadScheduleAwareness(l.ctx, l.svcCtx.AwarenessModel, items)
+			if awarenessErr != nil {
+				return nil, fmt.Errorf("query awareness: %w", awarenessErr)
+			}
 			list := make([]types.TopicInfo, 0, len(items))
 			for i := range items {
-				list = append(list, scheduleDayToTopicInfo(&items[i]))
+				list = append(list, scheduleDayToTopicInfo(&items[i], scheduleDayAwarenessFromMap(&items[i], awarenessByID)))
 			}
 			return &types.TopicListResp{
 				Code:    0,

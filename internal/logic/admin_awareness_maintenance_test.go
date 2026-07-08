@@ -220,8 +220,8 @@ func TestAdminUpdateAwarenessUpdatesSourceAndRegeneratesScheduleSnapshots(t *tes
 	if got, want := schedule.upserts[0].ScheduleDate.Format("2006-01-02"), "2026-05-01"; got != want {
 		t.Fatalf("expected regeneration from %s, got %s", want, got)
 	}
-	if schedule.upserts[0].AwarenessTitle.String != "新标题" || schedule.upserts[0].AwarenessSummary.String != "新摘要" || schedule.upserts[0].AwarenessDetails.String != "新详情" {
-		t.Fatalf("expected refreshed snapshot content, got %+v", schedule.upserts[0])
+	if !schedule.upserts[0].AwarenessId.Valid || schedule.upserts[0].AwarenessId.Int64 != 101 {
+		t.Fatalf("expected regenerated schedule to keep awareness id only, got %+v", schedule.upserts[0])
 	}
 }
 
@@ -297,7 +297,7 @@ func TestAdminInsertExistingAwarenessPlacesPointOnEffectiveDateAndReflows(t *tes
 	if len(schedule.upserts) == 0 {
 		t.Fatalf("expected schedule regeneration")
 	}
-	if schedule.upserts[0].AwarenessId.Int64 != 104 || schedule.upserts[0].AwarenessTitle.String != "平常心" {
+	if schedule.upserts[0].AwarenessId.Int64 != 104 {
 		t.Fatalf("expected selected date to become 平常心, got %+v", schedule.upserts[0])
 	}
 	if len(schedule.upserts) > 1 && schedule.upserts[1].AwarenessId.Int64 != 103 {
@@ -336,7 +336,7 @@ func TestAdminInsertNewAwarenessCreatesPointAndPlacesItOnEffectiveDate(t *testin
 	if awareness.reorderedID != awareness.created.AwarenessId || awareness.reorderedPosition != 3 {
 		t.Fatalf("expected new awareness inserted at position 3, got id=%d position=%d", awareness.reorderedID, awareness.reorderedPosition)
 	}
-	if schedule.upserts[0].AwarenessTitle.String != "平常心" {
+	if schedule.upserts[0].AwarenessId.Int64 != int64(awareness.created.AwarenessId) {
 		t.Fatalf("expected selected date to use new point, got %+v", schedule.upserts[0])
 	}
 }
@@ -368,7 +368,7 @@ func TestAdminInsertExistingAwarenessFromEarlierPositionPlacesPointOnLaterDate(t
 	if len(schedule.upserts) < 2 {
 		t.Fatalf("expected regenerated schedule, got %+v", schedule.upserts)
 	}
-	if schedule.upserts[0].AwarenessId.Int64 != 101 || schedule.upserts[0].AwarenessTitle.String != "提前项" {
+	if schedule.upserts[0].AwarenessId.Int64 != 101 {
 		t.Fatalf("expected selected date to become 提前项, got %+v", schedule.upserts[0])
 	}
 	if schedule.upserts[1].AwarenessId.Int64 != 104 {
@@ -438,7 +438,7 @@ func TestAdminInsertNewAwarenessCalculatesPositionBeforeCreatingEligiblePoint(t 
 	if len(schedule.upserts) == 0 {
 		t.Fatalf("expected schedule regeneration")
 	}
-	if schedule.upserts[0].AwarenessTitle.String != "新一轮首日" {
+	if schedule.upserts[0].AwarenessId.Int64 != int64(awareness.created.AwarenessId) {
 		t.Fatalf("expected selected date to use new point, got %+v", schedule.upserts[0])
 	}
 }

@@ -48,11 +48,15 @@ func (l *CreateDailyTaskLogic) CreateDailyTask(req *types.DailyTaskCreateReq) (r
 		}
 		scheduleDay, scheduleErr := l.svcCtx.AwarenessScheduleDaysModel.FindOneByCycleIdScheduleDate(l.ctx, cycle.CycleId, taskDate)
 		if scheduleErr == nil {
+			awareness, awarenessErr := scheduleDayAwareness(l.ctx, l.svcCtx.AwarenessModel, scheduleDay)
+			if awarenessErr != nil {
+				return nil, awarenessErr
+			}
 			if scheduleDay.DayType == scheduleDayPaused || scheduleDay.DayType == scheduleDayRest {
-				return &types.DailyTaskResp{Code: 0, Message: "ok", Data: scheduleDayToDailyTaskInfo(scheduleDay)}, nil
+				return &types.DailyTaskResp{Code: 0, Message: "ok", Data: scheduleDayToDailyTaskInfo(scheduleDay, awareness)}, nil
 			}
 			if findErr == model.ErrNotFound {
-				return l.createDailyTaskFromScheduleDay(scheduleDay, userID, taskDate)
+				return l.createDailyTaskFromScheduleDay(scheduleDay, awareness, userID, taskDate)
 			}
 		} else if scheduleErr != model.ErrNotFound {
 			return nil, scheduleErr
@@ -124,8 +128,14 @@ func (l *CreateDailyTaskLogic) CreateDailyTask(req *types.DailyTaskCreateReq) (r
 	return &types.DailyTaskResp{Code: 0, Message: "ok", Data: info}, nil
 }
 
-func (l *CreateDailyTaskLogic) createDailyTaskFromScheduleDay(scheduleDay *model.AwarenessScheduleDays, userID uint64, taskDate time.Time) (*types.DailyTaskResp, error) {
+func (l *CreateDailyTaskLogic) createDailyTaskFromScheduleDay(scheduleDay *model.AwarenessScheduleDays, awareness *model.Awareness, userID uint64, taskDate time.Time) (*types.DailyTaskResp, error) {
 	now := time.Now()
+	topicTitle := ""
+	topicSummary := ""
+	if awareness != nil {
+		topicTitle = awareness.PointTitle
+		topicSummary = awarenessSummary(awareness)
+	}
 	data := &model.DailyTasks{
 		UserId:           userID,
 		CommunityId:      scheduleDay.CommunityId,
@@ -134,8 +144,8 @@ func (l *CreateDailyTaskLogic) createDailyTaskFromScheduleDay(scheduleDay *model
 		TopicId:          0,
 		AwarenessId:      sql.NullInt64{Int64: nullableInt64(scheduleDay.AwarenessId), Valid: scheduleDay.AwarenessId.Valid},
 		TopicOrderNo:     nullableInt64(scheduleDay.CycleDayIndex),
-		TopicTitle:       nullableString(scheduleDay.AwarenessTitle),
-		TopicSummary:     nullableString(scheduleDay.AwarenessSummary),
+		TopicTitle:       topicTitle,
+		TopicSummary:     topicSummary,
 		Weakness:         nullString(""),
 		ImprovementPlan:  nullString(""),
 		VerificationPath: nullString(""),
@@ -158,6 +168,6 @@ func (l *CreateDailyTaskLogic) createDailyTaskFromScheduleDay(scheduleDay *model
 		return nil, err
 	}
 	info := dailyTaskToInfo(item)
-	info = applyScheduleDayAwarenessToDailyTaskInfo(info, scheduleDay)
+	info = applyScheduleDayAwarenessToDailyTaskInfo(info, scheduleDay, awareness)
 	return &types.DailyTaskResp{Code: 0, Message: "ok", Data: info}, nil
 }

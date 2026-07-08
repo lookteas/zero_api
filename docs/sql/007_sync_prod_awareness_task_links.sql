@@ -53,6 +53,7 @@ JOIN (
     AND is_meta = 0
   GROUP BY point_title
   HAVING COUNT(*) = 1
-) matched_awareness ON matched_awareness.point_title = dt.topic_title
+) matched_awareness
+  ON matched_awareness.point_title COLLATE utf8mb4_unicode_ci = dt.topic_title COLLATE utf8mb4_unicode_ci
 SET dt.awareness_id = matched_awareness.awareness_id
 WHERE dt.awareness_id IS NULL;

@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -162,7 +163,7 @@ func shouldRefreshTodayTaskScheduleDay(item *model.DailyTasks, scheduleDay *mode
 	return true
 }
 
-func refreshTodayTaskScheduleDaySnapshot(item *model.DailyTasks, scheduleDay *model.AwarenessScheduleDays) *model.DailyTasks {
+func refreshTodayTaskScheduleDaySnapshot(item *model.DailyTasks, scheduleDay *model.AwarenessScheduleDays, awareness *model.Awareness) *model.DailyTasks {
 	if item == nil || scheduleDay == nil {
 		return item
 	}
@@ -172,8 +173,10 @@ func refreshTodayTaskScheduleDaySnapshot(item *model.DailyTasks, scheduleDay *mo
 	cloned.TopicId = 0
 	cloned.AwarenessId = sql.NullInt64{Int64: nullableInt64(scheduleDay.AwarenessId), Valid: scheduleDay.AwarenessId.Valid}
 	cloned.TopicOrderNo = nullableInt64(scheduleDay.CycleDayIndex)
-	cloned.TopicTitle = nullableString(scheduleDay.AwarenessTitle)
-	cloned.TopicSummary = nullableString(scheduleDay.AwarenessSummary)
+	if awareness != nil {
+		cloned.TopicTitle = awareness.PointTitle
+		cloned.TopicSummary = awarenessSummary(awareness)
+	}
 	cloned.UpdatedAt = time.Now()
 	return &cloned
 }
@@ -263,7 +266,7 @@ func pausedDailyTaskInfo(taskDate time.Time, reason string) types.DailyTaskInfo 
 	}
 }
 
-func scheduleDayToDailyTaskInfo(item *model.AwarenessScheduleDays) types.DailyTaskInfo {
+func scheduleDayToDailyTaskInfo(item *model.AwarenessScheduleDays, awareness *model.Awareness) types.DailyTaskInfo {
 	if item == nil {
 		return types.DailyTaskInfo{}
 	}
@@ -275,48 +278,41 @@ func scheduleDayToDailyTaskInfo(item *model.AwarenessScheduleDays) types.DailyTa
 	}
 
 	info := types.DailyTaskInfo{
-		TaskDate:         item.ScheduleDate.Format("2006-01-02"),
-		TopicId:          0,
-		TopicOrderNo:     nullableInt64(item.CycleDayIndex),
-		TopicTitle:       nullableString(item.AwarenessTitle),
-		TopicSummary:     nullableString(item.AwarenessSummary),
-		AwarenessId:      uint64(nullableInt64(item.AwarenessId)),
-		AwarenessTitle:   nullableString(item.AwarenessTitle),
-		AwarenessTheme:   nullableString(item.AwarenessTheme),
-		AwarenessSummary: nullableString(item.AwarenessSummary),
-		AwarenessDetails: nullableString(item.AwarenessDetails),
-		ReferenceMin:     nullDecimalString(item.ReferenceMin),
-		ReferenceMax:     nullDecimalString(item.ReferenceMax),
-		BetterDirection:  nullableString(item.BetterDirection),
-		Status:           "draft",
-		CanEditContent:   true,
-		CreatedAt:        item.UpdatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt:        item.UpdatedAt.Format("2006-01-02 15:04:05"),
+		TaskDate:       item.ScheduleDate.Format("2006-01-02"),
+		TopicId:        0,
+		TopicOrderNo:   nullableInt64(item.CycleDayIndex),
+		AwarenessId:    uint64(nullableInt64(item.AwarenessId)),
+		Status:         "draft",
+		CanEditContent: true,
+		CreatedAt:      item.UpdatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt:      item.UpdatedAt.Format("2006-01-02 15:04:05"),
+	}
+	if awareness != nil {
+		info.TopicTitle = awareness.PointTitle
+		info.TopicSummary = awarenessSummary(awareness)
+		info.TopicDescription = awarenessDetails(awareness)
+		info = applyAwarenessToDailyTaskInfo(info, awareness)
 	}
 	return info
 }
 
-func applyScheduleDayAwarenessToDailyTaskInfo(info types.DailyTaskInfo, item *model.AwarenessScheduleDays) types.DailyTaskInfo {
+func applyScheduleDayAwarenessToDailyTaskInfo(info types.DailyTaskInfo, item *model.AwarenessScheduleDays, awareness *model.Awareness) types.DailyTaskInfo {
 	if item == nil || item.DayType != scheduleDayNormal {
 		return info
 	}
 	info.TopicId = 0
 	info.TopicOrderNo = nullableInt64(item.CycleDayIndex)
-	info.TopicTitle = nullableString(item.AwarenessTitle)
-	info.TopicSummary = nullableString(item.AwarenessSummary)
-	info.TopicDescription = nullableString(item.AwarenessDetails)
 	info.AwarenessId = uint64(nullableInt64(item.AwarenessId))
-	info.AwarenessTitle = nullableString(item.AwarenessTitle)
-	info.AwarenessTheme = nullableString(item.AwarenessTheme)
-	info.AwarenessSummary = nullableString(item.AwarenessSummary)
-	info.AwarenessDetails = nullableString(item.AwarenessDetails)
-	info.ReferenceMin = nullDecimalString(item.ReferenceMin)
-	info.ReferenceMax = nullDecimalString(item.ReferenceMax)
-	info.BetterDirection = nullableString(item.BetterDirection)
+	if awareness != nil {
+		info.TopicTitle = awareness.PointTitle
+		info.TopicSummary = awarenessSummary(awareness)
+		info.TopicDescription = awarenessDetails(awareness)
+		info = applyAwarenessToDailyTaskInfo(info, awareness)
+	}
 	return info
 }
 
-func scheduleDayToTopicInfo(item *model.AwarenessScheduleDays) types.TopicInfo {
+func scheduleDayToTopicInfo(item *model.AwarenessScheduleDays, awareness *model.Awareness) types.TopicInfo {
 	if item == nil {
 		return types.TopicInfo{}
 	}
@@ -334,20 +330,82 @@ func scheduleDayToTopicInfo(item *model.AwarenessScheduleDays) types.TopicInfo {
 	if item.DayType == scheduleDayRest {
 		return restTopicInfo(item.ScheduleDate)
 	}
-	return types.TopicInfo{
-		Id:             uint64(nullableInt64(item.AwarenessId)),
-		Title:          nullableString(item.AwarenessTitle),
-		Summary:        nullableString(item.AwarenessSummary),
-		Description:    nullableString(item.AwarenessDetails),
-		OrderNo:        nullableInt64(item.CycleDayIndex),
-		Status:         1,
-		ScheduleDate:   item.ScheduleDate.Format("2006-01-02"),
-		AwarenessId:    uint64(nullableInt64(item.AwarenessId)),
-		AwarenessTheme: nullableString(item.AwarenessTheme),
-		ReferenceMin:   nullDecimalString(item.ReferenceMin),
-		ReferenceMax:   nullDecimalString(item.ReferenceMax),
-		ProgressNo:     nullableInt64(item.EffectiveDayIndex) + 1,
+	info := types.TopicInfo{
+		Id:           uint64(nullableInt64(item.AwarenessId)),
+		OrderNo:      nullableInt64(item.CycleDayIndex),
+		Status:       1,
+		ScheduleDate: item.ScheduleDate.Format("2006-01-02"),
+		AwarenessId:  uint64(nullableInt64(item.AwarenessId)),
+		ProgressNo:   nullableInt64(item.EffectiveDayIndex) + 1,
 	}
+	if awareness != nil {
+		info.Id = awareness.AwarenessId
+		info.Title = awareness.PointTitle
+		info.Summary = awarenessSummary(awareness)
+		info.Description = awarenessDetails(awareness)
+		info.AwarenessId = awareness.AwarenessId
+		info.ReferenceMin = nullDecimalString(awareness.ReferenceMin)
+		info.ReferenceMax = nullDecimalString(awareness.ReferenceMax)
+		if awareness.Theme.Valid {
+			info.AwarenessTheme = awareness.Theme.String
+		}
+	}
+	return info
+}
+
+func scheduleDayAwareness(ctx context.Context, awarenessModel model.AwarenessModel, item *model.AwarenessScheduleDays) (*model.Awareness, error) {
+	if awarenessModel == nil || item == nil || !item.AwarenessId.Valid {
+		return nil, nil
+	}
+	awareness, err := awarenessModel.FindOne(ctx, uint64(item.AwarenessId.Int64))
+	if err == model.ErrNotFound {
+		return nil, nil
+	}
+	return awareness, err
+}
+
+func loadScheduleAwareness(ctx context.Context, awarenessModel model.AwarenessModel, items []model.AwarenessScheduleDays) (map[uint64]*model.Awareness, error) {
+	result := map[uint64]*model.Awareness{}
+	if awarenessModel == nil {
+		return result, nil
+	}
+
+	seen := map[uint64]bool{}
+	for i := range items {
+		if !items[i].AwarenessId.Valid {
+			continue
+		}
+		awarenessID := uint64(items[i].AwarenessId.Int64)
+		if seen[awarenessID] {
+			continue
+		}
+		seen[awarenessID] = true
+
+		awareness, err := awarenessModel.FindOne(ctx, awarenessID)
+		if err == model.ErrNotFound {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		result[awarenessID] = awareness
+	}
+	return result, nil
+}
+
+func scheduleDayAwarenessFromMap(item *model.AwarenessScheduleDays, awarenessByID map[uint64]*model.Awareness) *model.Awareness {
+	if item == nil || !item.AwarenessId.Valid {
+		return nil
+	}
+	return awarenessByID[uint64(item.AwarenessId.Int64)]
+}
+
+func scheduleDayList(items map[string]model.AwarenessScheduleDays) []model.AwarenessScheduleDays {
+	result := make([]model.AwarenessScheduleDays, 0, len(items))
+	for _, item := range items {
+		result = append(result, item)
+	}
+	return result
 }
 
 func nullableInt64(value sql.NullInt64) int64 {

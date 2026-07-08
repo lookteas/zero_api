@@ -145,13 +145,6 @@ func schedulePlanToModel(cycle *model.AwarenessCycles, plan scheduleDayPlan) mod
 
 	if plan.Awareness != nil {
 		item.AwarenessId = sql.NullInt64{Int64: int64(plan.Awareness.AwarenessId), Valid: true}
-		item.AwarenessTitle = nullString(plan.Awareness.PointTitle)
-		item.AwarenessTheme = plan.Awareness.Theme
-		item.AwarenessSummary = nullString(awarenessSummary(plan.Awareness))
-		item.AwarenessDetails = nullString(awarenessDetails(plan.Awareness))
-		item.ReferenceMin = plan.Awareness.ReferenceMin
-		item.ReferenceMax = plan.Awareness.ReferenceMax
-		item.BetterDirection = nullString(plan.Awareness.BetterDirection)
 	}
 	if plan.Pause != nil {
 		item.PauseId = sql.NullInt64{Int64: int64(plan.Pause.PauseId), Valid: plan.Pause.PauseId > 0}

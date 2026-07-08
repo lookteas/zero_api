@@ -23,9 +23,6 @@ CREATE TABLE IF NOT EXISTS awareness_check_chapters (
   check_id BIGINT UNSIGNED NOT NULL COMMENT '检测ID',
   user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
   chapter_id BIGINT UNSIGNED NOT NULL COMMENT '章节ID',
-  chapter_no INT NOT NULL DEFAULT 0 COMMENT '章节序号快照',
-  chapter_title VARCHAR(255) NOT NULL DEFAULT '' COMMENT '章节标题快照',
-  chapter_full_title VARCHAR(255) NOT NULL DEFAULT '' COMMENT '章节完整标题快照',
   total_points INT NOT NULL DEFAULT 0 COMMENT '本章可检测意识点数量',
   scored_points INT NOT NULL DEFAULT 0 COMMENT '已评分点数',
   score DECIMAL(6,2) DEFAULT NULL COMMENT '章节得分',
@@ -49,11 +46,7 @@ CREATE TABLE IF NOT EXISTS awareness_check_scores (
   user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
   chapter_id BIGINT UNSIGNED NOT NULL COMMENT '章节ID',
   awareness_id BIGINT UNSIGNED NOT NULL COMMENT '意识强度点ID',
-  title VARCHAR(255) NOT NULL DEFAULT '' COMMENT '意识强度点标题快照',
-  summary TEXT DEFAULT NULL COMMENT '意识强度点摘要快照',
   self_score DECIMAL(5,2) NOT NULL DEFAULT 50.00 COMMENT '原始自评分，百分比0.00-100.00',
-  human_score DECIMAL(5,2) NOT NULL DEFAULT 50.00 COMMENT '人类平均参考值，百分比0.00-100.00',
-  direction VARCHAR(20) NOT NULL DEFAULT 'higher' COMMENT '优化方向快照：higher=越高越好，lower=越低越好',
   score DECIMAL(6,2) NOT NULL DEFAULT 50.00 COMMENT '按方向换算后的得分',
   ref_score DECIMAL(6,2) NOT NULL DEFAULT 50.00 COMMENT '按方向换算后的人类平均参考分',
   delta DECIMAL(6,2) NOT NULL DEFAULT 0.00 COMMENT '得分相对人类平均参考差值',
@@ -67,7 +60,118 @@ CREATE TABLE IF NOT EXISTS awareness_check_scores (
   KEY idx_awareness_check_scores_chapter (check_id, chapter_id),
   KEY idx_awareness_check_scores_awareness (awareness_id),
   CHECK (self_score >= 0 AND self_score <= 100),
-  CHECK (human_score >= 0 AND human_score <= 100),
   CHECK (score >= 0 AND score <= 100),
   CHECK (ref_score >= 0 AND ref_score <= 100)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='意识强度检测评分快照表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='意识强度检测评分表';
+
+SET @check_chapter_no_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_check_chapters'
+    AND column_name = 'chapter_no'
+);
+SET @check_chapter_no_sql = IF(
+  @check_chapter_no_exists > 0,
+  'ALTER TABLE awareness_check_chapters DROP COLUMN chapter_no',
+  'SELECT 1'
+);
+PREPARE check_chapter_no_stmt FROM @check_chapter_no_sql;
+EXECUTE check_chapter_no_stmt;
+DEALLOCATE PREPARE check_chapter_no_stmt;
+
+SET @check_chapter_title_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_check_chapters'
+    AND column_name = 'chapter_title'
+);
+SET @check_chapter_title_sql = IF(
+  @check_chapter_title_exists > 0,
+  'ALTER TABLE awareness_check_chapters DROP COLUMN chapter_title',
+  'SELECT 1'
+);
+PREPARE check_chapter_title_stmt FROM @check_chapter_title_sql;
+EXECUTE check_chapter_title_stmt;
+DEALLOCATE PREPARE check_chapter_title_stmt;
+
+SET @check_chapter_full_title_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_check_chapters'
+    AND column_name = 'chapter_full_title'
+);
+SET @check_chapter_full_title_sql = IF(
+  @check_chapter_full_title_exists > 0,
+  'ALTER TABLE awareness_check_chapters DROP COLUMN chapter_full_title',
+  'SELECT 1'
+);
+PREPARE check_chapter_full_title_stmt FROM @check_chapter_full_title_sql;
+EXECUTE check_chapter_full_title_stmt;
+DEALLOCATE PREPARE check_chapter_full_title_stmt;
+
+SET @check_score_title_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_check_scores'
+    AND column_name = 'title'
+);
+SET @check_score_title_sql = IF(
+  @check_score_title_exists > 0,
+  'ALTER TABLE awareness_check_scores DROP COLUMN title',
+  'SELECT 1'
+);
+PREPARE check_score_title_stmt FROM @check_score_title_sql;
+EXECUTE check_score_title_stmt;
+DEALLOCATE PREPARE check_score_title_stmt;
+
+SET @check_score_summary_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_check_scores'
+    AND column_name = 'summary'
+);
+SET @check_score_summary_sql = IF(
+  @check_score_summary_exists > 0,
+  'ALTER TABLE awareness_check_scores DROP COLUMN summary',
+  'SELECT 1'
+);
+PREPARE check_score_summary_stmt FROM @check_score_summary_sql;
+EXECUTE check_score_summary_stmt;
+DEALLOCATE PREPARE check_score_summary_stmt;
+
+SET @check_score_human_score_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_check_scores'
+    AND column_name = 'human_score'
+);
+SET @check_score_human_score_sql = IF(
+  @check_score_human_score_exists > 0,
+  'ALTER TABLE awareness_check_scores DROP COLUMN human_score',
+  'SELECT 1'
+);
+PREPARE check_score_human_score_stmt FROM @check_score_human_score_sql;
+EXECUTE check_score_human_score_stmt;
+DEALLOCATE PREPARE check_score_human_score_stmt;
+
+SET @check_score_direction_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_check_scores'
+    AND column_name = 'direction'
+);
+SET @check_score_direction_sql = IF(
+  @check_score_direction_exists > 0,
+  'ALTER TABLE awareness_check_scores DROP COLUMN direction',
+  'SELECT 1'
+);
+PREPARE check_score_direction_stmt FROM @check_score_direction_sql;
+EXECUTE check_score_direction_stmt;
+DEALLOCATE PREPARE check_score_direction_stmt;

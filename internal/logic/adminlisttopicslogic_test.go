@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"api/internal/config"
 	"api/internal/svc"
@@ -56,15 +57,52 @@ func (db *adminListTopicsDB) ExecCtx(_ context.Context, query string, args ...an
 
 type adminListAwarenessModel struct {
 	model.AwarenessModel
-	points []model.Awareness
-	called bool
+	points        []model.Awareness
+	called        bool
+	eligibleCalls int
+	findOneCalls  int
 }
 
 func (m *adminListAwarenessModel) FindEligible(context.Context) ([]model.Awareness, error) {
 	m.called = true
+	m.eligibleCalls++
 	return m.points, nil
 }
+func (m *adminListAwarenessModel) FindOne(_ context.Context, id uint64) (*model.Awareness, error) {
+	m.called = true
+	m.findOneCalls++
+	for i := range m.points {
+		if m.points[i].AwarenessId == id {
+			return &m.points[i], nil
+		}
+	}
+	return nil, model.ErrNotFound
+}
 func (m *adminListAwarenessModel) withSession(sqlx.Session) model.AwarenessModel { return m }
+
+type adminScheduleModel struct {
+	model.AwarenessScheduleDaysModel
+	items []model.AwarenessScheduleDays
+}
+
+func (m *adminScheduleModel) FindByCommunityDateRange(context.Context, uint64, time.Time, time.Time) ([]model.AwarenessScheduleDays, error) {
+	return m.items, nil
+}
+func (m *adminScheduleModel) FindOneByCycleIdScheduleDate(context.Context, uint64, time.Time) (*model.AwarenessScheduleDays, error) {
+	panic("unexpected call")
+}
+func (m *adminScheduleModel) Insert(context.Context, *model.AwarenessScheduleDays) (sql.Result, error) {
+	panic("unexpected call")
+}
+func (m *adminScheduleModel) Upsert(context.Context, *model.AwarenessScheduleDays) error {
+	panic("unexpected call")
+}
+func (m *adminScheduleModel) DeleteFutureByCycle(context.Context, uint64, time.Time) error {
+	panic("unexpected call")
+}
+func (m *adminScheduleModel) withSession(sqlx.Session) model.AwarenessScheduleDaysModel {
+	return m
+}
 
 func TestAdminListTopicsWithoutWeekStartQueriesLegacyTopics(t *testing.T) {
 	t.Parallel()
@@ -157,6 +195,59 @@ func TestAdminListTopicsWithWeekStartReturnsAwarenessSchedule(t *testing.T) {
 	}
 	if rest.Title != "本轮结束，休息整合中" {
 		t.Fatalf("expected rest title, got %q", rest.Title)
+	}
+}
+
+func TestAdminListTopicsWithStoredScheduleLoadsAwarenessByID(t *testing.T) {
+	t.Parallel()
+
+	weekStart := time.Date(2026, 5, 4, 0, 0, 0, 0, time.Local)
+	scheduleItems := make([]model.AwarenessScheduleDays, 0, 7)
+	for i := 0; i < 7; i++ {
+		dayType := scheduleDayRest
+		awarenessID := sql.NullInt64{}
+		if i == 0 {
+			dayType = scheduleDayNormal
+			awarenessID = sql.NullInt64{Int64: 303, Valid: true}
+		}
+		scheduleItems = append(scheduleItems, model.AwarenessScheduleDays{
+			ScheduleDate:      weekStart.AddDate(0, 0, i),
+			DayType:           dayType,
+			AwarenessId:       awarenessID,
+			CycleDayIndex:     sql.NullInt64{Int64: int64(i), Valid: dayType == scheduleDayNormal},
+			EffectiveDayIndex: sql.NullInt64{Int64: int64(i), Valid: dayType == scheduleDayNormal},
+		})
+	}
+
+	awarenessModel := &adminListAwarenessModel{
+		points: []model.Awareness{
+			{
+				AwarenessId: 303,
+				PointTitle:  "已停用但保留排程",
+				Summary:     sql.NullString{String: "历史仍可显示", Valid: true},
+				Status:      0,
+			},
+		},
+	}
+	logic := NewAdminListTopicsLogic(WithCurrentAdminID(context.Background(), 1), &svc.ServiceContext{
+		AwarenessModel:             awarenessModel,
+		AwarenessScheduleDaysModel: &adminScheduleModel{items: scheduleItems},
+	})
+
+	resp, err := logic.AdminListTopics(&types.TopicQueryReq{WeekStart: "2026-05-04"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if awarenessModel.eligibleCalls != 0 || awarenessModel.findOneCalls != 1 {
+		t.Fatalf("expected stored schedule to load by id only, eligible=%d findOne=%d", awarenessModel.eligibleCalls, awarenessModel.findOneCalls)
+	}
+	if len(resp.Data.List) != 7 {
+		t.Fatalf("expected stored week schedule, got %+v", resp.Data.List)
+	}
+	first := resp.Data.List[0]
+	if first.AwarenessId != 303 || first.Title != "已停用但保留排程" || first.Summary != "历史仍可显示" {
+		t.Fatalf("expected stored schedule awareness content, got %+v", first)
 	}
 }
 

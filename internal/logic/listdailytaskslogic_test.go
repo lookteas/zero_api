@@ -107,11 +107,18 @@ func TestFillMissingDatesSkipsPausedScheduleDays(t *testing.T) {
 				ScheduleDate:      nextDate,
 				DayType:           scheduleDayNormal,
 				AwarenessId:       sql.NullInt64{Int64: 101, Valid: true},
-				AwarenessTitle:    sql.NullString{String: "觉察边界", Valid: true},
-				AwarenessSummary:  sql.NullString{String: "边界摘要", Valid: true},
 				CycleDayIndex:     sql.NullInt64{Int64: 0, Valid: true},
 				EffectiveDayIndex: sql.NullInt64{Int64: 0, Valid: true},
 				UpdatedAt:         nextDate,
+			},
+		}},
+		AwarenessModel: &recordingAwarenessModel{points: []model.Awareness{
+			{
+				AwarenessId:     101,
+				PointTitle:      "觉察边界",
+				Summary:         sql.NullString{String: "边界摘要", Valid: true},
+				SortOrderGlobal: 1,
+				Status:          1,
 			},
 		}},
 	})
@@ -152,6 +159,10 @@ func (db *listDailyTasksDB) QueryRowsCtx(_ context.Context, v any, _ string, _ .
 		elem.Set(reflect.ValueOf(db.items))
 	}
 	return nil
+}
+
+func (db *listDailyTasksDB) QueryRowCtx(context.Context, any, string, ...any) error {
+	return sql.ErrNoRows
 }
 
 func TestListDailyTasksFiltersExistingTasksOnPausedScheduleDays(t *testing.T) {
@@ -209,7 +220,7 @@ func TestListDailyTasksFiltersExistingTasksOnPausedScheduleDays(t *testing.T) {
 	}
 }
 
-func TestListDailyTasksUsesScheduleSnapshotForExistingHistoryTask(t *testing.T) {
+func TestListDailyTasksUsesScheduleAwarenessFromSourceForExistingHistoryTask(t *testing.T) {
 	t.Parallel()
 
 	taskDate := time.Date(2026, 5, 12, 0, 0, 0, 0, time.Local)
@@ -234,10 +245,17 @@ func TestListDailyTasksUsesScheduleSnapshotForExistingHistoryTask(t *testing.T) 
 				ScheduleDate:      taskDate,
 				DayType:           scheduleDayNormal,
 				AwarenessId:       sql.NullInt64{Int64: 202, Valid: true},
-				AwarenessTitle:    sql.NullString{String: "新排期主题", Valid: true},
-				AwarenessSummary:  sql.NullString{String: "新摘要", Valid: true},
 				CycleDayIndex:     sql.NullInt64{Int64: 9, Valid: true},
 				EffectiveDayIndex: sql.NullInt64{Int64: 19, Valid: true},
+			},
+		}},
+		AwarenessModel: &recordingAwarenessModel{points: []model.Awareness{
+			{
+				AwarenessId:     202,
+				PointTitle:      "主表主题",
+				Summary:         sql.NullString{String: "主表摘要", Valid: true},
+				SortOrderGlobal: 9,
+				Status:          1,
 			},
 		}},
 	})
@@ -250,7 +268,7 @@ func TestListDailyTasksUsesScheduleSnapshotForExistingHistoryTask(t *testing.T) 
 		t.Fatalf("expected one history task, got %+v", resp.Data.List)
 	}
 	got := resp.Data.List[0]
-	if got.TopicTitle != "新排期主题" || got.TopicSummary != "新摘要" || got.AwarenessId != 202 || got.TopicOrderNo != 9 {
-		t.Fatalf("expected history task to use schedule snapshot, got %+v", got)
+	if got.TopicTitle != "主表主题" || got.TopicSummary != "主表摘要" || got.AwarenessId != 202 || got.TopicOrderNo != 9 {
+		t.Fatalf("expected history task to use awareness source content, got %+v", got)
 	}
 }

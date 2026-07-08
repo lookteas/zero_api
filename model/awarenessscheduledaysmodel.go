@@ -35,27 +35,20 @@ type (
 	}
 
 	AwarenessScheduleDays struct {
-		ScheduleDayId     uint64          `db:"schedule_day_id"`
-		CycleId           uint64          `db:"cycle_id"`
-		CommunityId       uint64          `db:"community_id"`
-		ScheduleDate      time.Time       `db:"schedule_date"`
-		DayType           string          `db:"day_type"`
-		AwarenessId       sql.NullInt64   `db:"awareness_id"`
-		AwarenessTitle    sql.NullString  `db:"awareness_title"`
-		AwarenessTheme    sql.NullString  `db:"awareness_theme"`
-		AwarenessSummary  sql.NullString  `db:"awareness_summary"`
-		AwarenessDetails  sql.NullString  `db:"awareness_details"`
-		ReferenceMin      sql.NullFloat64 `db:"reference_min"`
-		ReferenceMax      sql.NullFloat64 `db:"reference_max"`
-		BetterDirection   sql.NullString  `db:"better_direction"`
-		CycleIndex        int64           `db:"cycle_index"`
-		CycleDayIndex     sql.NullInt64   `db:"cycle_day_index"`
-		EffectiveDayIndex sql.NullInt64   `db:"effective_day_index"`
-		PauseId           sql.NullInt64   `db:"pause_id"`
-		PauseReason       sql.NullString  `db:"pause_reason"`
-		GeneratedVersion  uint64          `db:"generated_version"`
-		CreatedAt         time.Time       `db:"created_at"`
-		UpdatedAt         time.Time       `db:"updated_at"`
+		ScheduleDayId     uint64         `db:"schedule_day_id"`
+		CycleId           uint64         `db:"cycle_id"`
+		CommunityId       uint64         `db:"community_id"`
+		ScheduleDate      time.Time      `db:"schedule_date"`
+		DayType           string         `db:"day_type"`
+		AwarenessId       sql.NullInt64  `db:"awareness_id"`
+		CycleIndex        int64          `db:"cycle_index"`
+		CycleDayIndex     sql.NullInt64  `db:"cycle_day_index"`
+		EffectiveDayIndex sql.NullInt64  `db:"effective_day_index"`
+		PauseId           sql.NullInt64  `db:"pause_id"`
+		PauseReason       sql.NullString `db:"pause_reason"`
+		GeneratedVersion  uint64         `db:"generated_version"`
+		CreatedAt         time.Time      `db:"created_at"`
+		UpdatedAt         time.Time      `db:"updated_at"`
 	}
 )
 
@@ -88,15 +81,15 @@ func (m *customAwarenessScheduleDaysModel) FindByCommunityDateRange(ctx context.
 }
 
 func (m *customAwarenessScheduleDaysModel) Insert(ctx context.Context, data *AwarenessScheduleDays) (sql.Result, error) {
-	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table, awarenessScheduleDaysRowsExpectAutoSet)
-	return m.conn.ExecCtx(ctx, query, data.CycleId, data.CommunityId, data.ScheduleDate, data.DayType, data.AwarenessId, data.AwarenessTitle, data.AwarenessTheme, data.AwarenessSummary, data.AwarenessDetails, data.ReferenceMin, data.ReferenceMax, data.BetterDirection, data.CycleIndex, data.CycleDayIndex, data.EffectiveDayIndex, data.PauseId, data.PauseReason, data.GeneratedVersion)
+	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table, awarenessScheduleDaysRowsExpectAutoSet)
+	return m.conn.ExecCtx(ctx, query, data.CycleId, data.CommunityId, data.ScheduleDate, data.DayType, data.AwarenessId, data.CycleIndex, data.CycleDayIndex, data.EffectiveDayIndex, data.PauseId, data.PauseReason, data.GeneratedVersion)
 }
 
 func (m *customAwarenessScheduleDaysModel) Upsert(ctx context.Context, data *AwarenessScheduleDays) error {
-	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on duplicate key update %s", m.table, awarenessScheduleDaysRowsExpectAutoSet, awarenessScheduleDaysRowsWithPlaceHolder)
+	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on duplicate key update %s", m.table, awarenessScheduleDaysRowsExpectAutoSet, awarenessScheduleDaysRowsWithPlaceHolder)
 	_, err := m.conn.ExecCtx(ctx, query,
-		data.CycleId, data.CommunityId, data.ScheduleDate, data.DayType, data.AwarenessId, data.AwarenessTitle, data.AwarenessTheme, data.AwarenessSummary, data.AwarenessDetails, data.ReferenceMin, data.ReferenceMax, data.BetterDirection, data.CycleIndex, data.CycleDayIndex, data.EffectiveDayIndex, data.PauseId, data.PauseReason, data.GeneratedVersion,
-		data.CycleId, data.CommunityId, data.ScheduleDate, data.DayType, data.AwarenessId, data.AwarenessTitle, data.AwarenessTheme, data.AwarenessSummary, data.AwarenessDetails, data.ReferenceMin, data.ReferenceMax, data.BetterDirection, data.CycleIndex, data.CycleDayIndex, data.EffectiveDayIndex, data.PauseId, data.PauseReason, data.GeneratedVersion,
+		data.CycleId, data.CommunityId, data.ScheduleDate, data.DayType, data.AwarenessId, data.CycleIndex, data.CycleDayIndex, data.EffectiveDayIndex, data.PauseId, data.PauseReason, data.GeneratedVersion,
+		data.CycleId, data.CommunityId, data.ScheduleDate, data.DayType, data.AwarenessId, data.CycleIndex, data.CycleDayIndex, data.EffectiveDayIndex, data.PauseId, data.PauseReason, data.GeneratedVersion,
 	)
 	return err
 }

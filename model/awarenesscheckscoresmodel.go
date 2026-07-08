@@ -37,11 +37,7 @@ type (
 		UserId      uint64          `db:"user_id"`
 		ChapterId   uint64          `db:"chapter_id"`
 		AwarenessId uint64          `db:"awareness_id"`
-		Title       string          `db:"title"`
-		Summary     sql.NullString  `db:"summary"`
 		SelfScore   float64         `db:"self_score"`
-		HumanScore  float64         `db:"human_score"`
-		Direction   string          `db:"direction"`
 		Score       float64         `db:"score"`
 		RefScore    float64         `db:"ref_score"`
 		Delta       float64         `db:"delta"`
@@ -60,17 +56,13 @@ func NewAwarenessCheckScoresModel(conn sqlx.SqlConn) AwarenessCheckScoresModel {
 }
 
 func (m *customAwarenessCheckScoresModel) Upsert(ctx context.Context, data *AwarenessCheckScore) (sql.Result, error) {
-	query := fmt.Sprintf("insert into %s (`check_id`, `user_id`, `chapter_id`, `awareness_id`, `title`, `summary`, `self_score`, `human_score`, `direction`, `score`, `ref_score`, `delta`, `prev_score`, `score_change`) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on duplicate key update `title` = values(`title`), `summary` = values(`summary`), `self_score` = values(`self_score`), `human_score` = values(`human_score`), `direction` = values(`direction`), `score` = values(`score`), `ref_score` = values(`ref_score`), `delta` = values(`delta`), `prev_score` = values(`prev_score`), `score_change` = values(`score_change`), `updated_at` = now()", m.table)
+	query := fmt.Sprintf("insert into %s (`check_id`, `user_id`, `chapter_id`, `awareness_id`, `self_score`, `score`, `ref_score`, `delta`, `prev_score`, `score_change`) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on duplicate key update `self_score` = values(`self_score`), `score` = values(`score`), `ref_score` = values(`ref_score`), `delta` = values(`delta`), `prev_score` = values(`prev_score`), `score_change` = values(`score_change`), `updated_at` = now()", m.table)
 	return m.conn.ExecCtx(ctx, query,
 		data.CheckId,
 		data.UserId,
 		data.ChapterId,
 		data.AwarenessId,
-		data.Title,
-		data.Summary,
 		data.SelfScore,
-		data.HumanScore,
-		data.Direction,
 		data.Score,
 		data.RefScore,
 		data.Delta,

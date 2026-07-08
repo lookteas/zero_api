@@ -44,23 +44,27 @@ func (l *GetMyTodayTaskLogic) GetMyTodayTask() (resp *types.DailyTaskResp, err e
 		}
 		scheduleDay, scheduleErr := l.svcCtx.AwarenessScheduleDaysModel.FindOneByCycleIdScheduleDate(l.ctx, cycle.CycleId, today)
 		if scheduleErr == nil {
+			awareness, awarenessErr := scheduleDayAwareness(l.ctx, l.svcCtx.AwarenessModel, scheduleDay)
+			if awarenessErr != nil {
+				return nil, awarenessErr
+			}
 			if scheduleDay.DayType == scheduleDayPaused {
-				return &types.DailyTaskResp{Code: 0, Message: "ok", Data: scheduleDayToDailyTaskInfo(scheduleDay)}, nil
+				return &types.DailyTaskResp{Code: 0, Message: "ok", Data: scheduleDayToDailyTaskInfo(scheduleDay, awareness)}, nil
 			}
 			if scheduleDay.DayType == scheduleDayRest {
-				return &types.DailyTaskResp{Code: 0, Message: "ok", Data: scheduleDayToDailyTaskInfo(scheduleDay)}, nil
+				return &types.DailyTaskResp{Code: 0, Message: "ok", Data: scheduleDayToDailyTaskInfo(scheduleDay, awareness)}, nil
 			}
 			item, findErr := l.svcCtx.DailyTasksModel.FindOneByUserIdTaskDate(l.ctx, currentUserID(l.ctx), today)
 			if findErr == nil {
 				if shouldRefreshTodayTaskScheduleDay(item, scheduleDay) {
-					refreshed := refreshTodayTaskScheduleDaySnapshot(item, scheduleDay)
+					refreshed := refreshTodayTaskScheduleDaySnapshot(item, scheduleDay, awareness)
 					if updateErr := l.svcCtx.DailyTasksModel.Update(l.ctx, refreshed); updateErr != nil {
 						return nil, updateErr
 					}
 					item = refreshed
 				}
 				info := dailyTaskToInfo(item)
-				info = applyScheduleDayAwarenessToDailyTaskInfo(info, scheduleDay)
+				info = applyScheduleDayAwarenessToDailyTaskInfo(info, scheduleDay, awareness)
 				return &types.DailyTaskResp{Code: 0, Message: "ok", Data: info}, nil
 			}
 			if findErr != model.ErrNotFound {

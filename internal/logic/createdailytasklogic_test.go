@@ -55,6 +55,18 @@ func (m *recordingAwarenessModel) FindEligible(context.Context) ([]model.Awarene
 	m.called = true
 	return m.points, m.err
 }
+func (m *recordingAwarenessModel) FindOne(_ context.Context, id uint64) (*model.Awareness, error) {
+	m.called = true
+	if m.err != nil {
+		return nil, m.err
+	}
+	for i := range m.points {
+		if m.points[i].AwarenessId == id {
+			return &m.points[i], nil
+		}
+	}
+	return nil, model.ErrNotFound
+}
 func (m *recordingAwarenessModel) withSession(sqlx.Session) model.AwarenessModel { return m }
 
 func TestCreateDailyTaskUsesAwarenessCycleForTaskDate(t *testing.T) {

@@ -23,9 +23,9 @@ CREATE TABLE IF NOT EXISTS awareness_cycles (
   cycle_name VARCHAR(100) NOT NULL DEFAULT '默认意识打卡轮次' COMMENT '轮次名称，用于后台识别，例如2026春季意识提升营',
   start_date DATE NOT NULL COMMENT '轮次启动日期；从该日期开始计算第一个有效打卡日',
   rest_days INT NOT NULL DEFAULT 7 COMMENT '每轮所有意识点完成后的固定休息天数',
-  schedule_horizon_days INT NOT NULL DEFAULT 365 COMMENT '每次重算时生成未来多少天的排程快照',
+  schedule_horizon_days INT NOT NULL DEFAULT 365 COMMENT '每次重算时生成未来多少天的排程',
   status VARCHAR(20) NOT NULL DEFAULT 'active' COMMENT '轮次状态：draft=草稿，active=启用，paused=整体暂停，archived=归档',
-  last_generated_until DATE DEFAULT NULL COMMENT '排程快照已生成到的最后日期',
+  last_generated_until DATE DEFAULT NULL COMMENT '排程已生成到的最后日期',
   created_by BIGINT UNSIGNED DEFAULT NULL COMMENT '创建人用户ID或管理员ID，当前可为空',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -72,19 +72,12 @@ CREATE TABLE IF NOT EXISTS awareness_cycle_pauses (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='意识打卡轮次暂停日期表';
 
 CREATE TABLE IF NOT EXISTS awareness_schedule_days (
-  schedule_day_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '每日排程快照ID',
+  schedule_day_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '每日排程ID',
   cycle_id BIGINT UNSIGNED NOT NULL COMMENT '所属意识打卡轮次ID',
   community_id BIGINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '所属社群ID，用于SaaS多社群隔离',
   schedule_date DATE NOT NULL COMMENT '排程日期',
   day_type VARCHAR(20) NOT NULL COMMENT '日期类型：normal=正常打卡，paused=暂停打卡，rest=轮次结束后的固定休息日',
   awareness_id BIGINT UNSIGNED DEFAULT NULL COMMENT '意识强度点ID；normal时有值，paused/rest时为空',
-  awareness_title VARCHAR(255) DEFAULT NULL COMMENT '意识强度点标题快照；避免后续修改意识点后影响已生成排程',
-  awareness_theme VARCHAR(255) DEFAULT NULL COMMENT '意识强度点主题快照',
-  awareness_summary TEXT DEFAULT NULL COMMENT '意识强度点摘要快照',
-  awareness_details MEDIUMTEXT DEFAULT NULL COMMENT '意识强度点详情快照',
-  reference_min DECIMAL(5,2) DEFAULT NULL COMMENT '参考范围最小值快照，百分比0.00-100.00',
-  reference_max DECIMAL(5,2) DEFAULT NULL COMMENT '参考范围最大值快照，百分比0.00-100.00',
-  better_direction VARCHAR(20) DEFAULT NULL COMMENT '提升方向快照：higher=越高越好，lower=越低越好',
   cycle_index INT NOT NULL DEFAULT 0 COMMENT '第几轮，从0开始计数',
   cycle_day_index INT DEFAULT NULL COMMENT '当前轮中的有效打卡日序号，从0开始；paused/rest为空',
   effective_day_index INT DEFAULT NULL COMMENT '从启动日开始累计的有效打卡日序号，从0开始；暂停日不计入',
@@ -99,7 +92,119 @@ CREATE TABLE IF NOT EXISTS awareness_schedule_days (
   KEY idx_schedule_day_type (day_type),
   KEY idx_schedule_awareness_id (awareness_id),
   KEY idx_schedule_pause_id (pause_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='意识打卡每日排程快照表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='意识打卡每日排程表';
+
+SET @schedule_awareness_title_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_schedule_days'
+    AND column_name = 'awareness_title'
+);
+SET @schedule_awareness_title_sql = IF(
+  @schedule_awareness_title_exists > 0,
+  'ALTER TABLE awareness_schedule_days DROP COLUMN awareness_title',
+  'SELECT 1'
+);
+PREPARE schedule_awareness_title_stmt FROM @schedule_awareness_title_sql;
+EXECUTE schedule_awareness_title_stmt;
+DEALLOCATE PREPARE schedule_awareness_title_stmt;
+
+SET @schedule_awareness_theme_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_schedule_days'
+    AND column_name = 'awareness_theme'
+);
+SET @schedule_awareness_theme_sql = IF(
+  @schedule_awareness_theme_exists > 0,
+  'ALTER TABLE awareness_schedule_days DROP COLUMN awareness_theme',
+  'SELECT 1'
+);
+PREPARE schedule_awareness_theme_stmt FROM @schedule_awareness_theme_sql;
+EXECUTE schedule_awareness_theme_stmt;
+DEALLOCATE PREPARE schedule_awareness_theme_stmt;
+
+SET @schedule_awareness_summary_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_schedule_days'
+    AND column_name = 'awareness_summary'
+);
+SET @schedule_awareness_summary_sql = IF(
+  @schedule_awareness_summary_exists > 0,
+  'ALTER TABLE awareness_schedule_days DROP COLUMN awareness_summary',
+  'SELECT 1'
+);
+PREPARE schedule_awareness_summary_stmt FROM @schedule_awareness_summary_sql;
+EXECUTE schedule_awareness_summary_stmt;
+DEALLOCATE PREPARE schedule_awareness_summary_stmt;
+
+SET @schedule_awareness_details_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_schedule_days'
+    AND column_name = 'awareness_details'
+);
+SET @schedule_awareness_details_sql = IF(
+  @schedule_awareness_details_exists > 0,
+  'ALTER TABLE awareness_schedule_days DROP COLUMN awareness_details',
+  'SELECT 1'
+);
+PREPARE schedule_awareness_details_stmt FROM @schedule_awareness_details_sql;
+EXECUTE schedule_awareness_details_stmt;
+DEALLOCATE PREPARE schedule_awareness_details_stmt;
+
+SET @schedule_reference_min_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_schedule_days'
+    AND column_name = 'reference_min'
+);
+SET @schedule_reference_min_sql = IF(
+  @schedule_reference_min_exists > 0,
+  'ALTER TABLE awareness_schedule_days DROP COLUMN reference_min',
+  'SELECT 1'
+);
+PREPARE schedule_reference_min_stmt FROM @schedule_reference_min_sql;
+EXECUTE schedule_reference_min_stmt;
+DEALLOCATE PREPARE schedule_reference_min_stmt;
+
+SET @schedule_reference_max_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_schedule_days'
+    AND column_name = 'reference_max'
+);
+SET @schedule_reference_max_sql = IF(
+  @schedule_reference_max_exists > 0,
+  'ALTER TABLE awareness_schedule_days DROP COLUMN reference_max',
+  'SELECT 1'
+);
+PREPARE schedule_reference_max_stmt FROM @schedule_reference_max_sql;
+EXECUTE schedule_reference_max_stmt;
+DEALLOCATE PREPARE schedule_reference_max_stmt;
+
+SET @schedule_better_direction_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_schedule_days'
+    AND column_name = 'better_direction'
+);
+SET @schedule_better_direction_sql = IF(
+  @schedule_better_direction_exists > 0,
+  'ALTER TABLE awareness_schedule_days DROP COLUMN better_direction',
+  'SELECT 1'
+);
+PREPARE schedule_better_direction_stmt FROM @schedule_better_direction_sql;
+EXECUTE schedule_better_direction_stmt;
+DEALLOCATE PREPARE schedule_better_direction_stmt;
 
 SET @daily_tasks_community_id_exists = (
   SELECT COUNT(*)
@@ -129,7 +234,7 @@ SET @daily_tasks_schedule_day_id_exists = (
 SET @daily_tasks_schedule_day_id_sql = IF(
   @daily_tasks_schedule_day_id_exists > 0,
   'SELECT 1',
-  'ALTER TABLE daily_tasks ADD COLUMN schedule_day_id BIGINT UNSIGNED DEFAULT NULL COMMENT ''关联的每日排程快照ID；用于追溯该打卡来自哪一天的排程'' AFTER task_date'
+  'ALTER TABLE daily_tasks ADD COLUMN schedule_day_id BIGINT UNSIGNED DEFAULT NULL COMMENT ''关联的每日排程ID；用于追溯该打卡来自哪一天的排程'' AFTER task_date'
 );
 PREPARE daily_tasks_schedule_day_id_stmt FROM @daily_tasks_schedule_day_id_sql;
 EXECUTE daily_tasks_schedule_day_id_stmt;
