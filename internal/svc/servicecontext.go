@@ -27,6 +27,9 @@ type ServiceContext struct {
 	AwarenessModel                 model.AwarenessModel
 	ChaptersModel                  model.ChaptersModel
 	FreeModePracticesModel         model.FreeModePracticesModel
+	AwarenessChecksModel           model.AwarenessChecksModel
+	AwarenessCheckChaptersModel    model.AwarenessCheckChaptersModel
+	AwarenessCheckScoresModel      model.AwarenessCheckScoresModel
 	AwarenessCyclesModel           model.AwarenessCyclesModel
 	AwarenessCyclePausesModel      model.AwarenessCyclePausesModel
 	AwarenessScheduleDaysModel     model.AwarenessScheduleDaysModel
@@ -48,6 +51,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	var awarenessModel model.AwarenessModel
 	var chaptersModel model.ChaptersModel
 	var freeModePracticesModel model.FreeModePracticesModel
+	var awarenessChecksModel model.AwarenessChecksModel
+	var awarenessCheckChaptersModel model.AwarenessCheckChaptersModel
+	var awarenessCheckScoresModel model.AwarenessCheckScoresModel
 	var awarenessCyclesModel model.AwarenessCyclesModel
 	var awarenessCyclePausesModel model.AwarenessCyclePausesModel
 	var awarenessScheduleDaysModel model.AwarenessScheduleDaysModel
@@ -68,6 +74,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		awarenessModel = model.NewAwarenessModel(db)
 		chaptersModel = model.NewChaptersModel(db)
 		freeModePracticesModel = model.NewFreeModePracticesModel(db)
+		awarenessChecksModel = model.NewAwarenessChecksModel(db)
+		awarenessCheckChaptersModel = model.NewAwarenessCheckChaptersModel(db)
+		awarenessCheckScoresModel = model.NewAwarenessCheckScoresModel(db)
 		awarenessCyclesModel = model.NewAwarenessCyclesModel(db)
 		awarenessCyclePausesModel = model.NewAwarenessCyclePausesModel(db)
 		awarenessScheduleDaysModel = model.NewAwarenessScheduleDaysModel(db)
@@ -90,6 +99,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		AwarenessModel:                 awarenessModel,
 		ChaptersModel:                  chaptersModel,
 		FreeModePracticesModel:         freeModePracticesModel,
+		AwarenessChecksModel:           awarenessChecksModel,
+		AwarenessCheckChaptersModel:    awarenessCheckChaptersModel,
+		AwarenessCheckScoresModel:      awarenessCheckScoresModel,
 		AwarenessCyclesModel:           awarenessCyclesModel,
 		AwarenessCyclePausesModel:      awarenessCyclePausesModel,
 		AwarenessScheduleDaysModel:     awarenessScheduleDaysModel,

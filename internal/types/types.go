@@ -145,6 +145,171 @@ type FreeModePracticeResp struct {
 	Data      FreeModePracticeInfo `json:"data"`
 }
 
+type AwarenessCheckInfo struct {
+	CheckId       uint64  `json:"checkId"`
+	Status        string  `json:"status"`
+	DoneChapters  int64   `json:"doneChapters"`
+	TotalChapters int64   `json:"totalChapters"`
+	Score         float64 `json:"score,optional"`
+	RefScore      float64 `json:"refScore,optional"`
+	Delta         float64 `json:"delta,optional"`
+	PrevCheckId   uint64  `json:"prevCheckId,optional"`
+	StartedAt     string  `json:"startedAt"`
+	CompletedAt   string  `json:"completedAt,optional"`
+	CreatedAt     string  `json:"createdAt"`
+	UpdatedAt     string  `json:"updatedAt"`
+}
+
+type AwarenessCheckChapterInfo struct {
+	CheckChapterId   uint64  `json:"checkChapterId"`
+	CheckId          uint64  `json:"checkId"`
+	ChapterId        uint64  `json:"chapterId"`
+	ChapterNo        int64   `json:"chapterNo"`
+	ChapterTitle     string  `json:"chapterTitle"`
+	ChapterFullTitle string  `json:"chapterFullTitle"`
+	TotalPoints      int64   `json:"totalPoints"`
+	ScoredPoints     int64   `json:"scoredPoints"`
+	Score            float64 `json:"score,optional"`
+	RefScore         float64 `json:"refScore,optional"`
+	Delta            float64 `json:"delta,optional"`
+	PrevScore        float64 `json:"prevScore,optional"`
+	HasPrevScore     bool    `json:"hasPrevScore"`
+	ScoreChange      float64 `json:"scoreChange,optional"`
+	Status           string  `json:"status"`
+	SubmittedAt      string  `json:"submittedAt,optional"`
+}
+
+type AwarenessCheckPointInfo struct {
+	AwarenessId   uint64  `json:"awarenessId"`
+	ChapterId     uint64  `json:"chapterId"`
+	SectionId     uint64  `json:"sectionId"`
+	Title         string  `json:"title"`
+	Summary       string  `json:"summary,optional"`
+	Details       string  `json:"details,optional"`
+	OrderNo       int64   `json:"orderNo"`
+	HumanScore    float64 `json:"humanScore"`
+	Direction     string  `json:"direction"`
+	DirectionText string  `json:"directionText"`
+	SelfScore     float64 `json:"selfScore"`
+	Score         float64 `json:"score"`
+	RefScore      float64 `json:"refScore"`
+	Delta         float64 `json:"delta"`
+	PrevScore     float64 `json:"prevScore,optional"`
+	HasPrevScore  bool    `json:"hasPrevScore"`
+	ScoreChange   float64 `json:"scoreChange,optional"`
+}
+
+type AwarenessCheckScoreInfo struct {
+	ScoreId       uint64  `json:"scoreId"`
+	CheckId       uint64  `json:"checkId"`
+	ChapterId     uint64  `json:"chapterId"`
+	AwarenessId   uint64  `json:"awarenessId"`
+	Title         string  `json:"title"`
+	Summary       string  `json:"summary,optional"`
+	SelfScore     float64 `json:"selfScore"`
+	HumanScore    float64 `json:"humanScore"`
+	Direction     string  `json:"direction"`
+	DirectionText string  `json:"directionText"`
+	Score         float64 `json:"score"`
+	RefScore      float64 `json:"refScore"`
+	Delta         float64 `json:"delta"`
+	PrevScore     float64 `json:"prevScore,optional"`
+	HasPrevScore  bool    `json:"hasPrevScore"`
+	ScoreChange   float64 `json:"scoreChange,optional"`
+	CreatedAt     string  `json:"createdAt"`
+	UpdatedAt     string  `json:"updatedAt"`
+}
+
+type AwarenessCheckChangeInfo struct {
+	Scope       string  `json:"scope"`
+	ChapterId   uint64  `json:"chapterId,optional"`
+	AwarenessId uint64  `json:"awarenessId,optional"`
+	Title       string  `json:"title"`
+	ScoreChange float64 `json:"scoreChange"`
+}
+
+type AwarenessCheckCompareInfo struct {
+	PrevCheckId      uint64                     `json:"prevCheckId,optional"`
+	ScoreChange      float64                    `json:"scoreChange,optional"`
+	SameChapterCount int64                      `json:"sameChapterCount"`
+	MissingChapters  []string                   `json:"missingChapters,optional"`
+	ImprovedChapters []AwarenessCheckChangeInfo `json:"improvedChapters"`
+	DeclinedChapters []AwarenessCheckChangeInfo `json:"declinedChapters"`
+	ImprovedPoints   []AwarenessCheckChangeInfo `json:"improvedPoints"`
+	DeclinedPoints   []AwarenessCheckChangeInfo `json:"declinedPoints"`
+}
+
+type AwarenessCheckCurrentData struct {
+	Check           AwarenessCheckInfo          `json:"check"`
+	Chapters        []AwarenessCheckChapterInfo `json:"chapters"`
+	MissingChapters []AwarenessCheckChapterInfo `json:"missingChapters"`
+	Compare         AwarenessCheckCompareInfo   `json:"compare"`
+}
+
+type AwarenessCheckCurrentResp struct {
+	Code      int64                     `json:"code"`
+	Message   string                    `json:"message"`
+	RequestId string                    `json:"requestId,optional"`
+	Data      AwarenessCheckCurrentData `json:"data"`
+}
+
+type AwarenessCheckChapterData struct {
+	Check   AwarenessCheckInfo        `json:"check"`
+	Chapter AwarenessCheckChapterInfo `json:"chapter"`
+	Points  []AwarenessCheckPointInfo `json:"points"`
+	Compare AwarenessCheckCompareInfo `json:"compare"`
+}
+
+type AwarenessCheckChapterResp struct {
+	Code      int64                     `json:"code"`
+	Message   string                    `json:"message"`
+	RequestId string                    `json:"requestId,optional"`
+	Data      AwarenessCheckChapterData `json:"data"`
+}
+
+type AwarenessCheckHistoryData struct {
+	List []AwarenessCheckInfo `json:"list"`
+}
+
+type AwarenessCheckHistoryResp struct {
+	Code      int64                     `json:"code"`
+	Message   string                    `json:"message"`
+	RequestId string                    `json:"requestId,optional"`
+	Data      AwarenessCheckHistoryData `json:"data"`
+}
+
+type AwarenessCheckDetailData struct {
+	Check    AwarenessCheckInfo          `json:"check"`
+	Chapters []AwarenessCheckChapterInfo `json:"chapters"`
+	Scores   []AwarenessCheckScoreInfo   `json:"scores"`
+	Compare  AwarenessCheckCompareInfo   `json:"compare"`
+}
+
+type AwarenessCheckDetailResp struct {
+	Code      int64                    `json:"code"`
+	Message   string                   `json:"message"`
+	RequestId string                   `json:"requestId,optional"`
+	Data      AwarenessCheckDetailData `json:"data"`
+}
+
+type AwarenessCheckChapterPathReq struct {
+	ChapterId uint64 `path:"chapterId"`
+}
+
+type AwarenessCheckDetailPathReq struct {
+	CheckId uint64 `path:"checkId"`
+}
+
+type AwarenessCheckScoreInput struct {
+	AwarenessId uint64  `json:"awarenessId"`
+	SelfScore   float64 `json:"selfScore"`
+}
+
+type AwarenessCheckScoreSaveReq struct {
+	ChapterId uint64                     `path:"chapterId"`
+	Scores    []AwarenessCheckScoreInput `json:"scores"`
+}
+
 type CodeLoginReq struct {
 	TargetType  string `json:"targetType"`
 	TargetValue string `json:"targetValue"`
