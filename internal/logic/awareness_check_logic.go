@@ -898,6 +898,7 @@ func buildAwarenessCheckChapterData(ctx context.Context, svcCtx *svc.ServiceCont
 		}
 		info := awarenessCheckPointToInfo(point, scored)
 		if saved, ok := savedByAwareness[point.AwarenessId]; ok {
+			info.IsSaved = true
 			info.SelfScore = saved.SelfScore
 			info.Score = saved.Score
 			info.RefScore = saved.RefScore

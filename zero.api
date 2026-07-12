@@ -176,6 +176,7 @@ type (
 		direction     string  `json:"direction"`
 		directionText string  `json:"directionText"`
 		selfScore     float64 `json:"selfScore"`
+		isSaved       bool    `json:"isSaved"`
 		score         float64 `json:"score"`
 		refScore      float64 `json:"refScore"`
 		delta         float64 `json:"delta"`

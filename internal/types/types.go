@@ -191,6 +191,7 @@ type AwarenessCheckPointInfo struct {
 	Direction     string  `json:"direction"`
 	DirectionText string  `json:"directionText"`
 	SelfScore     float64 `json:"selfScore"`
+	IsSaved       bool    `json:"isSaved"`
 	Score         float64 `json:"score"`
 	RefScore      float64 `json:"refScore"`
 	Delta         float64 `json:"delta"`
