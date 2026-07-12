@@ -278,6 +278,44 @@ type AwarenessCheckHistoryResp struct {
 	Data      AwarenessCheckHistoryData `json:"data"`
 }
 
+type AwarenessCheckTrendPoint struct {
+	CheckId       uint64  `json:"checkId"`
+	StartedAt     string  `json:"startedAt"`
+	CompletedAt   string  `json:"completedAt,optional"`
+	DoneChapters  int64   `json:"doneChapters"`
+	TotalChapters int64   `json:"totalChapters"`
+	Score         float64 `json:"score"`
+	RefScore      float64 `json:"refScore"`
+	Delta         float64 `json:"delta"`
+}
+
+type AwarenessCheckChapterTrendPoint struct {
+	CheckId          uint64  `json:"checkId"`
+	ChapterId        uint64  `json:"chapterId"`
+	ChapterNo        int64   `json:"chapterNo"`
+	ChapterTitle     string  `json:"chapterTitle"`
+	ChapterFullTitle string  `json:"chapterFullTitle"`
+	SubmittedAt      string  `json:"submittedAt,optional"`
+	Score            float64 `json:"score"`
+	RefScore         float64 `json:"refScore"`
+	Delta            float64 `json:"delta"`
+	HasPrevScore     bool    `json:"hasPrevScore"`
+	ScoreChange      float64 `json:"scoreChange,optional"`
+}
+
+type AwarenessCheckTrendsData struct {
+	Overall         []AwarenessCheckTrendPoint        `json:"overall"`
+	Chapters        []AwarenessCheckChapterTrendPoint `json:"chapters"`
+	ReferenceDeltas []AwarenessCheckChapterTrendPoint `json:"referenceDeltas"`
+}
+
+type AwarenessCheckTrendsResp struct {
+	Code      int64                    `json:"code"`
+	Message   string                   `json:"message"`
+	RequestId string                   `json:"requestId,optional"`
+	Data      AwarenessCheckTrendsData `json:"data"`
+}
+
 type AwarenessCheckDetailData struct {
 	Check    AwarenessCheckInfo          `json:"check"`
 	Chapters []AwarenessCheckChapterInfo `json:"chapters"`

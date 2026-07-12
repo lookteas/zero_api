@@ -216,6 +216,46 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			},
 			{
 				Method:  http.MethodGet,
+				Path:    "/awareness-checks/current",
+				Handler: GetAwarenessCheckCurrentHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/awareness-checks",
+				Handler: CreateAwarenessCheckHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/awareness-checks/current/chapters/:chapterId",
+				Handler: GetAwarenessCheckChapterHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPut,
+				Path:    "/awareness-checks/current/chapters/:chapterId/scores",
+				Handler: SaveAwarenessCheckChapterScoresHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/awareness-checks/current/chapters/:chapterId/submit",
+				Handler: SubmitAwarenessCheckChapterHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/awareness-checks/history",
+				Handler: ListAwarenessCheckHistoryHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/awareness-checks/trends",
+				Handler: GetAwarenessCheckTrendsHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/awareness-checks/:checkId",
+				Handler: GetAwarenessCheckDetailHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
 				Path:    "/free-mode/chapters",
 				Handler: ListFreemodeChaptersHandler(serverCtx),
 			},

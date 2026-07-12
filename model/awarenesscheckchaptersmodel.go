@@ -22,6 +22,7 @@ type (
 	AwarenessCheckChaptersModel interface {
 		Insert(ctx context.Context, data *AwarenessCheckChapter) (sql.Result, error)
 		FindByCheckID(ctx context.Context, checkID uint64) ([]AwarenessCheckChapter, error)
+		FindCompletedByUserID(ctx context.Context, userID uint64, limit int64) ([]AwarenessCheckChapter, error)
 		FindOneByCheckAndChapter(ctx context.Context, checkID uint64, chapterID uint64) (*AwarenessCheckChapter, error)
 		Update(ctx context.Context, data *AwarenessCheckChapter) error
 		withSession(session sqlx.Session) AwarenessCheckChaptersModel
@@ -81,6 +82,16 @@ func (m *customAwarenessCheckChaptersModel) FindByCheckID(ctx context.Context, c
 	query := fmt.Sprintf("select %s from %s where `check_id` = ? order by `chapter_id` asc", awarenessCheckChapterRows, m.table)
 	err := m.conn.QueryRowsCtx(ctx, &resp, query, checkID)
 	return resp, err
+}
+
+func (m *customAwarenessCheckChaptersModel) FindCompletedByUserID(ctx context.Context, userID uint64, limit int64) ([]AwarenessCheckChapter, error) {
+	var resp []AwarenessCheckChapter
+	query := fmt.Sprintf("select %s from %s where `user_id` = ? and `status` = 'completed' order by `submitted_at` desc, `check_id` desc, `check_chapter_id` desc", awarenessCheckChapterRows, m.table)
+	if limit > 0 {
+		query += " limit ?"
+		return resp, m.conn.QueryRowsCtx(ctx, &resp, query, userID, limit)
+	}
+	return resp, m.conn.QueryRowsCtx(ctx, &resp, query, userID)
 }
 
 func (m *customAwarenessCheckChaptersModel) FindOneByCheckAndChapter(ctx context.Context, checkID uint64, chapterID uint64) (*AwarenessCheckChapter, error) {

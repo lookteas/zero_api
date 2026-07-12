@@ -12,11 +12,59 @@ CREATE TABLE IF NOT EXISTS awareness_checks (
   completed_at TIMESTAMP NULL DEFAULT NULL COMMENT '检测完成时间',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  active_user_id BIGINT UNSIGNED GENERATED ALWAYS AS (CASE WHEN status IN ('draft', 'in_progress') THEN user_id ELSE NULL END) STORED COMMENT '当前进行中检测用户ID',
   PRIMARY KEY (check_id),
+  UNIQUE KEY uk_awareness_checks_active_user (active_user_id),
   KEY idx_awareness_checks_user_status (user_id, status, check_id),
   KEY idx_awareness_checks_user_completed (user_id, completed_at, check_id),
   KEY idx_awareness_checks_prev (prev_check_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='意识强度检测轮次表';
+
+UPDATE awareness_checks c
+JOIN (
+  SELECT user_id, MAX(check_id) AS keep_check_id
+  FROM awareness_checks
+  WHERE status IN ('draft', 'in_progress')
+  GROUP BY user_id
+  HAVING COUNT(*) > 1
+) duplicated
+  ON duplicated.user_id = c.user_id
+SET c.status = 'abandoned',
+    c.updated_at = CURRENT_TIMESTAMP
+WHERE c.status IN ('draft', 'in_progress')
+  AND c.check_id <> duplicated.keep_check_id;
+
+SET @active_user_id_column_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_checks'
+    AND column_name = 'active_user_id'
+);
+SET @active_user_id_column_sql = IF(
+  @active_user_id_column_exists = 0,
+  'ALTER TABLE awareness_checks ADD COLUMN active_user_id BIGINT UNSIGNED GENERATED ALWAYS AS (CASE WHEN status IN (''draft'', ''in_progress'') THEN user_id ELSE NULL END) STORED COMMENT ''当前进行中检测用户ID''',
+  'SELECT 1'
+);
+PREPARE active_user_id_column_stmt FROM @active_user_id_column_sql;
+EXECUTE active_user_id_column_stmt;
+DEALLOCATE PREPARE active_user_id_column_stmt;
+
+SET @active_user_id_index_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.statistics
+  WHERE table_schema = DATABASE()
+    AND table_name = 'awareness_checks'
+    AND index_name = 'uk_awareness_checks_active_user'
+);
+SET @active_user_id_index_sql = IF(
+  @active_user_id_index_exists = 0,
+  'ALTER TABLE awareness_checks ADD UNIQUE KEY uk_awareness_checks_active_user (active_user_id)',
+  'SELECT 1'
+);
+PREPARE active_user_id_index_stmt FROM @active_user_id_index_sql;
+EXECUTE active_user_id_index_stmt;
+DEALLOCATE PREPARE active_user_id_index_stmt;
 
 CREATE TABLE IF NOT EXISTS awareness_check_chapters (
   check_chapter_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '意识强度检测章节ID',

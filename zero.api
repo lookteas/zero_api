@@ -132,6 +132,187 @@ type (
 		requestId string             `json:"requestId,optional"`
 		data      FreeModePracticeInfo `json:"data"`
 	}
+	AwarenessCheckInfo {
+		checkId       uint64  `json:"checkId"`
+		status        string  `json:"status"`
+		doneChapters  int64   `json:"doneChapters"`
+		totalChapters int64   `json:"totalChapters"`
+		score         float64 `json:"score,optional"`
+		refScore      float64 `json:"refScore,optional"`
+		delta         float64 `json:"delta,optional"`
+		prevCheckId   uint64  `json:"prevCheckId,optional"`
+		startedAt     string  `json:"startedAt"`
+		completedAt   string  `json:"completedAt,optional"`
+		createdAt     string  `json:"createdAt"`
+		updatedAt     string  `json:"updatedAt"`
+	}
+	AwarenessCheckChapterInfo {
+		checkChapterId   uint64  `json:"checkChapterId"`
+		checkId          uint64  `json:"checkId"`
+		chapterId        uint64  `json:"chapterId"`
+		chapterNo        int64   `json:"chapterNo"`
+		chapterTitle     string  `json:"chapterTitle"`
+		chapterFullTitle string  `json:"chapterFullTitle"`
+		totalPoints      int64   `json:"totalPoints"`
+		scoredPoints     int64   `json:"scoredPoints"`
+		score            float64 `json:"score,optional"`
+		refScore         float64 `json:"refScore,optional"`
+		delta            float64 `json:"delta,optional"`
+		prevScore        float64 `json:"prevScore,optional"`
+		hasPrevScore     bool    `json:"hasPrevScore"`
+		scoreChange      float64 `json:"scoreChange,optional"`
+		status           string  `json:"status"`
+		submittedAt      string  `json:"submittedAt,optional"`
+	}
+	AwarenessCheckPointInfo {
+		awarenessId   uint64  `json:"awarenessId"`
+		chapterId     uint64  `json:"chapterId"`
+		sectionId     uint64  `json:"sectionId"`
+		title         string  `json:"title"`
+		summary       string  `json:"summary,optional"`
+		details       string  `json:"details,optional"`
+		orderNo       int64   `json:"orderNo"`
+		humanScore    float64 `json:"humanScore"`
+		direction     string  `json:"direction"`
+		directionText string  `json:"directionText"`
+		selfScore     float64 `json:"selfScore"`
+		score         float64 `json:"score"`
+		refScore      float64 `json:"refScore"`
+		delta         float64 `json:"delta"`
+		prevScore     float64 `json:"prevScore,optional"`
+		hasPrevScore  bool    `json:"hasPrevScore"`
+		scoreChange   float64 `json:"scoreChange,optional"`
+	}
+	AwarenessCheckScoreInfo {
+		scoreId       uint64  `json:"scoreId"`
+		checkId       uint64  `json:"checkId"`
+		chapterId     uint64  `json:"chapterId"`
+		awarenessId   uint64  `json:"awarenessId"`
+		title         string  `json:"title"`
+		summary       string  `json:"summary,optional"`
+		selfScore     float64 `json:"selfScore"`
+		humanScore    float64 `json:"humanScore"`
+		direction     string  `json:"direction"`
+		directionText string  `json:"directionText"`
+		score         float64 `json:"score"`
+		refScore      float64 `json:"refScore"`
+		delta         float64 `json:"delta"`
+		prevScore     float64 `json:"prevScore,optional"`
+		hasPrevScore  bool    `json:"hasPrevScore"`
+		scoreChange   float64 `json:"scoreChange,optional"`
+		createdAt     string  `json:"createdAt"`
+		updatedAt     string  `json:"updatedAt"`
+	}
+	AwarenessCheckChangeInfo {
+		scope       string  `json:"scope"`
+		chapterId   uint64  `json:"chapterId,optional"`
+		awarenessId uint64  `json:"awarenessId,optional"`
+		title       string  `json:"title"`
+		scoreChange float64 `json:"scoreChange"`
+	}
+	AwarenessCheckCompareInfo {
+		prevCheckId      uint64                     `json:"prevCheckId,optional"`
+		scoreChange      float64                    `json:"scoreChange,optional"`
+		sameChapterCount int64                      `json:"sameChapterCount"`
+		missingChapters  []string                   `json:"missingChapters,optional"`
+		improvedChapters []AwarenessCheckChangeInfo `json:"improvedChapters"`
+		declinedChapters []AwarenessCheckChangeInfo `json:"declinedChapters"`
+		improvedPoints   []AwarenessCheckChangeInfo `json:"improvedPoints"`
+		declinedPoints   []AwarenessCheckChangeInfo `json:"declinedPoints"`
+	}
+	AwarenessCheckCurrentData {
+		check           AwarenessCheckInfo          `json:"check"`
+		chapters        []AwarenessCheckChapterInfo `json:"chapters"`
+		missingChapters []AwarenessCheckChapterInfo `json:"missingChapters"`
+		compare         AwarenessCheckCompareInfo   `json:"compare"`
+	}
+	AwarenessCheckCurrentResp {
+		code      int64                     `json:"code"`
+		message   string                    `json:"message"`
+		requestId string                    `json:"requestId,optional"`
+		data      AwarenessCheckCurrentData `json:"data"`
+	}
+	AwarenessCheckChapterData {
+		check   AwarenessCheckInfo        `json:"check"`
+		chapter AwarenessCheckChapterInfo `json:"chapter"`
+		points  []AwarenessCheckPointInfo `json:"points"`
+		compare AwarenessCheckCompareInfo `json:"compare"`
+	}
+	AwarenessCheckChapterResp {
+		code      int64                     `json:"code"`
+		message   string                    `json:"message"`
+		requestId string                    `json:"requestId,optional"`
+		data      AwarenessCheckChapterData `json:"data"`
+	}
+	AwarenessCheckHistoryData {
+		list []AwarenessCheckInfo `json:"list"`
+	}
+	AwarenessCheckHistoryResp {
+		code      int64                     `json:"code"`
+		message   string                    `json:"message"`
+		requestId string                    `json:"requestId,optional"`
+		data      AwarenessCheckHistoryData `json:"data"`
+	}
+	AwarenessCheckTrendPoint {
+		checkId       uint64  `json:"checkId"`
+		startedAt     string  `json:"startedAt"`
+		completedAt   string  `json:"completedAt,optional"`
+		doneChapters  int64   `json:"doneChapters"`
+		totalChapters int64   `json:"totalChapters"`
+		score         float64 `json:"score"`
+		refScore      float64 `json:"refScore"`
+		delta         float64 `json:"delta"`
+	}
+	AwarenessCheckChapterTrendPoint {
+		checkId          uint64  `json:"checkId"`
+		chapterId        uint64  `json:"chapterId"`
+		chapterNo        int64   `json:"chapterNo"`
+		chapterTitle     string  `json:"chapterTitle"`
+		chapterFullTitle string  `json:"chapterFullTitle"`
+		submittedAt      string  `json:"submittedAt,optional"`
+		score            float64 `json:"score"`
+		refScore         float64 `json:"refScore"`
+		delta            float64 `json:"delta"`
+		hasPrevScore     bool    `json:"hasPrevScore"`
+		scoreChange      float64 `json:"scoreChange,optional"`
+	}
+	AwarenessCheckTrendsData {
+		overall         []AwarenessCheckTrendPoint        `json:"overall"`
+		chapters        []AwarenessCheckChapterTrendPoint `json:"chapters"`
+		referenceDeltas []AwarenessCheckChapterTrendPoint `json:"referenceDeltas"`
+	}
+	AwarenessCheckTrendsResp {
+		code      int64                    `json:"code"`
+		message   string                   `json:"message"`
+		requestId string                   `json:"requestId,optional"`
+		data      AwarenessCheckTrendsData `json:"data"`
+	}
+	AwarenessCheckDetailData {
+		check    AwarenessCheckInfo          `json:"check"`
+		chapters []AwarenessCheckChapterInfo `json:"chapters"`
+		scores   []AwarenessCheckScoreInfo   `json:"scores"`
+		compare  AwarenessCheckCompareInfo   `json:"compare"`
+	}
+	AwarenessCheckDetailResp {
+		code      int64                    `json:"code"`
+		message   string                   `json:"message"`
+		requestId string                   `json:"requestId,optional"`
+		data      AwarenessCheckDetailData `json:"data"`
+	}
+	AwarenessCheckChapterPathReq {
+		chapterId uint64 `path:"chapterId"`
+	}
+	AwarenessCheckDetailPathReq {
+		checkId uint64 `path:"checkId"`
+	}
+	AwarenessCheckScoreInput {
+		awarenessId uint64  `json:"awarenessId"`
+		selfScore   float64 `json:"selfScore"`
+	}
+	AwarenessCheckScoreSaveReq {
+		chapterId uint64                     `path:"chapterId"`
+		scores    []AwarenessCheckScoreInput `json:"scores"`
+	}
 	DailyLogInfo {
 		id          uint64 `json:"id"`
 		dailyTaskId uint64 `json:"dailyTaskId"`
@@ -623,6 +804,30 @@ service zero-api {
 
 	@handler GetMyTodayTask
 	get /me/today-task returns (DailyTaskResp)
+
+	@handler GetAwarenessCheckCurrent
+	get /awareness-checks/current returns (AwarenessCheckCurrentResp)
+
+	@handler CreateAwarenessCheck
+	post /awareness-checks returns (AwarenessCheckCurrentResp)
+
+	@handler GetAwarenessCheckChapter
+	get /awareness-checks/current/chapters/:chapterId (AwarenessCheckChapterPathReq) returns (AwarenessCheckChapterResp)
+
+	@handler SaveAwarenessCheckChapterScores
+	put /awareness-checks/current/chapters/:chapterId/scores (AwarenessCheckScoreSaveReq) returns (AwarenessCheckChapterResp)
+
+	@handler SubmitAwarenessCheckChapter
+	post /awareness-checks/current/chapters/:chapterId/submit (AwarenessCheckChapterPathReq) returns (AwarenessCheckChapterResp)
+
+	@handler ListAwarenessCheckHistory
+	get /awareness-checks/history returns (AwarenessCheckHistoryResp)
+
+	@handler GetAwarenessCheckTrends
+	get /awareness-checks/trends returns (AwarenessCheckTrendsResp)
+
+	@handler GetAwarenessCheckDetail
+	get /awareness-checks/:checkId (AwarenessCheckDetailPathReq) returns (AwarenessCheckDetailResp)
 
 	@handler ListFreemodeChapters
 	get /free-mode/chapters returns (FreeModeChapterListResp)

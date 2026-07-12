@@ -24,6 +24,7 @@ type (
 		FindOne(ctx context.Context, id uint64) (*AwarenessCheck, error)
 		FindCurrentByUserID(ctx context.Context, userID uint64) (*AwarenessCheck, error)
 		FindLatestDoneByUserID(ctx context.Context, userID uint64) (*AwarenessCheck, error)
+		FindLatestScoredByUserID(ctx context.Context, userID uint64) (*AwarenessCheck, error)
 		FindByUserID(ctx context.Context, userID uint64, limit int64) ([]AwarenessCheck, error)
 		Update(ctx context.Context, data *AwarenessCheck) error
 		withSession(session sqlx.Session) AwarenessChecksModel
@@ -105,6 +106,20 @@ func (m *customAwarenessChecksModel) FindCurrentByUserID(ctx context.Context, us
 func (m *customAwarenessChecksModel) FindLatestDoneByUserID(ctx context.Context, userID uint64) (*AwarenessCheck, error) {
 	var resp AwarenessCheck
 	query := fmt.Sprintf("select %s from %s where `user_id` = ? and `status` = 'completed' order by `completed_at` desc, `check_id` desc limit 1", awarenessCheckRows, m.table)
+	err := m.conn.QueryRowCtx(ctx, &resp, query, userID)
+	switch err {
+	case nil:
+		return &resp, nil
+	case sqlx.ErrNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, err
+	}
+}
+
+func (m *customAwarenessChecksModel) FindLatestScoredByUserID(ctx context.Context, userID uint64) (*AwarenessCheck, error) {
+	var resp AwarenessCheck
+	query := fmt.Sprintf("select %s from %s where `user_id` = ? and `status` <> 'abandoned' and `score` is not null order by `started_at` desc, `check_id` desc limit 1", awarenessCheckRows, m.table)
 	err := m.conn.QueryRowCtx(ctx, &resp, query, userID)
 	switch err {
 	case nil:
