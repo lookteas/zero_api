@@ -582,6 +582,11 @@ type PasswordLoginReq struct {
 	Password string `json:"password"`
 }
 
+type ChangePasswordReq struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+}
+
 type RefreshTokenReq struct {
 	RefreshToken string `json:"refreshToken"`
 }

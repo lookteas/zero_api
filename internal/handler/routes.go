@@ -205,6 +205,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: GetMeHandler(serverCtx),
 			},
 			{
+				Method:  http.MethodPatch,
+				Path:    "/me/password",
+				Handler: ChangePasswordHandler(serverCtx),
+			},
+			{
 				Method:  http.MethodGet,
 				Path:    "/me/home",
 				Handler: GetHomeHandler(serverCtx),
